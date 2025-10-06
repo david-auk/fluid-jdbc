@@ -6,16 +6,12 @@ plugins {
     id("org.jetbrains.dokka") version "1.9.20"
 }
 
-sourceSets {
-    named("main") {
-        java.srcDirs("src/main/java", "src/main/kotlin")
-        resources.srcDirs("src/main/resources")
-    }
-    named("test") {
-        java.srcDirs("src/test/java", "src/test/kotlin")
-        resources.srcDirs("src/test/resources")
-    }
-}
+//sourceSets {
+//    named("main") {
+//        java.srcDirs("src/main/java", "src/main/kotlin")
+//        resources.srcDirs("src/main/resources")
+//    }
+//}
 
 group = "io.github.david-auk"
 version = "0.1.0"
