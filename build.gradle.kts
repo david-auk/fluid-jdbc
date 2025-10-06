@@ -7,21 +7,43 @@ plugins {
     id("org.jetbrains.dokka") version "1.9.20"
 }
 
+sourceSets {
+    named("main") {
+        java.srcDirs("src/main/java", "src/main/kotlin", "src/main/my-custom")
+        resources.srcDirs("src/main/resources")
+    }
+    named("test") {
+        java.srcDirs("src/test/java", "src/test/kotlin")
+        resources.srcDirs("src/test/resources")
+    }
+}
+
 group = "io.github.david-auk"
 version = "0.1.0"
 
 java {
-    toolchain { languageVersion.set(JavaLanguageVersion.of(21)) }
+    toolchain {
+        languageVersion.set(JavaLanguageVersion.of(24))
+    }
     withSourcesJar()
     withJavadocJar() // plain Javadoc jar (Dokka can replace content)
 }
 
 tasks.javadoc { enabled = false }     // optional if you only want Dokka HTML
 
+repositories {
+    mavenCentral()
+}
+
 dependencies {
     api(kotlin("stdlib"))
     testImplementation(kotlin("test"))
     testImplementation("org.junit.jupiter:junit-jupiter:5.11.0")
+
+    // Jackson Databind (ObjectMapper lives here)
+    implementation("com.fasterxml.jackson.core:jackson-databind:2.17.1")
+    // (Optional) Jackson Annotations — sometimes required for features like @JsonProperty
+    implementation("com.fasterxml.jackson.core:jackson-annotations:2.17.1")
 }
 tasks.test { useJUnitPlatform() }
 
