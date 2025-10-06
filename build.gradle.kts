@@ -1,4 +1,3 @@
-// build.gradle.kts (module: fluid-jdbc)
 plugins {
     kotlin("jvm") version "2.0.0"
     `java-library`
@@ -9,7 +8,7 @@ plugins {
 
 sourceSets {
     named("main") {
-        java.srcDirs("src/main/java", "src/main/kotlin", "src/main/my-custom")
+        java.srcDirs("src/main/java", "src/main/kotlin")
         resources.srcDirs("src/main/resources")
     }
     named("test") {
@@ -22,11 +21,12 @@ group = "io.github.david-auk"
 version = "0.1.0"
 
 java {
-    toolchain {
-        languageVersion.set(JavaLanguageVersion.of(24))
-    }
+    toolchain { languageVersion.set(JavaLanguageVersion.of(21)) }
     withSourcesJar()
-    withJavadocJar() // plain Javadoc jar (Dokka can replace content)
+    withJavadocJar()
+}
+kotlin {
+    jvmToolchain(21)
 }
 
 tasks.javadoc { enabled = false }     // optional if you only want Dokka HTML
@@ -45,6 +45,7 @@ dependencies {
     // (Optional) Jackson Annotations — sometimes required for features like @JsonProperty
     implementation("com.fasterxml.jackson.core:jackson-annotations:2.17.1")
 }
+
 tasks.test { useJUnitPlatform() }
 
 publishing {
