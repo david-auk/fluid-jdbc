@@ -19,7 +19,7 @@ sourceSets {
 }
 
 group = "io.github.david-auk"
-version = "0.1.0"
+version = "0.1.1"
 
 java {
     toolchain { languageVersion.set(JavaLanguageVersion.of(21)) }
