@@ -287,7 +287,7 @@ class TableEntityValidationTest {
     static class WrapperColumnEntity implements TableEntity {
         @PrimaryKey @TableColumn private final UUID id;
         @TableColumn private final Integer count;  // ok: wrapper type
-
+        @TableConstructor
         public WrapperColumnEntity(UUID id, Integer count) {
             this.id = id;
             this.count = count;
