@@ -1,8 +1,10 @@
+import org.gradle.api.file.DuplicatesStrategy
+import org.gradle.jvm.tasks.Jar
+
 plugins {
     kotlin("jvm") version "2.0.0"
     `java-library`
-    `maven-publish`
-    signing
+    id("com.vanniktech.maven.publish") version "0.34.0"
     id("org.jetbrains.dokka") version "1.9.20"
 }
 
@@ -47,41 +49,38 @@ tasks.named<Jar>("sourcesJar") {
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
 }
 
-publishing {
-    publications {
-        create<MavenPublication>("maven") {
-            from(components["java"])
-            pom {
-                name.set("fluid-jdbc")
-                description.set("Map classes to tables via annotations, generate generic DAOs, and query in pure Java/Kotlin.")
-                url.set("https://github.com/david-auk/fluid-jdbc")
-                licenses {
-                    license {
-                        name.set("Apache-2.0")
-                        url.set("https://www.apache.org/licenses/LICENSE-2.0")
-                    }
-                }
-                developers {
-                    developer {
-                        id.set("david-auk")
-                        name.set("David Aukes")
-                        url.set("https://github.com/david-auk")
-                    }
-                }
-                scm {
-                    url.set("https://github.com/david-auk/fluid-jdbc")
-                    connection.set("scm:git:https://github.com/david-auk/fluid-jdbc.git")
-                    developerConnection.set("scm:git:ssh://git@github.com/david-auk/fluid-jdbc.git")
-                }
+mavenPublishing {
+    // Set coordinates for the artifact
+    coordinates(group.toString(), "fluid-jdbc", version.toString())
+
+    // Publish to Sonatype Central Portal
+    publishToMavenCentral()
+
+    // Sign all publications when SIGNING_KEY / SIGNING_PASSWORD are present (handled by plugin)
+    signAllPublications()
+
+    // POM metadata
+    pom {
+        name.set("fluid-jdbc")
+        description.set("Map classes to tables via annotations, generate generic DAOs, and query in pure Java/Kotlin.")
+        url.set("https://github.com/david-auk/fluid-jdbc")
+        licenses {
+            license {
+                name.set("Apache-2.0")
+                url.set("https://www.apache.org/licenses/LICENSE-2.0")
             }
         }
+        developers {
+            developer {
+                id.set("david-auk")
+                name.set("David Aukes")
+                url.set("https://github.com/david-auk")
+            }
+        }
+        scm {
+            url.set("https://github.com/david-auk/fluid-jdbc")
+            connection.set("scm:git:https://github.com/david-auk/fluid-jdbc.git")
+            developerConnection.set("scm:git:ssh://git@github.com/david-auk/fluid-jdbc.git")
+        }
     }
-}
-
-// Sign all publications using in-memory PGP (good for CI)
-signing {
-    val signingKey = System.getenv("SIGNING_KEY")      // ASCII-armored private key
-    val signingPass = System.getenv("SIGNING_PASSWORD")
-    useInMemoryPgpKeys(signingKey, signingPass)
-    sign(publishing.publications)
 }
