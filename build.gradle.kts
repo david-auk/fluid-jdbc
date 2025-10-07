@@ -86,9 +86,9 @@ mavenPublishing {
     }
 }
 
-// Make the standard javadocJar package Dokka HTML output, so publication tasks
-// automatically depend on the correct inputs without referencing internal task names.
-tasks.named<Jar>("javadocJar") {
-    dependsOn(tasks.named<DokkaTask>("dokkaHtml"))
-    from(tasks.named<DokkaTask>("dokkaHtml").flatMap { it.outputDirectory })
+// Ensure module metadata generation runs after Dokka's javadoc JAR is produced
+afterEvaluate {
+    tasks.matching { it.name == "generateMetadataFileForMavenPublication" }.configureEach {
+        dependsOn(tasks.named("dokkaJavadocJar"))
+    }
 }
