@@ -1,5 +1,6 @@
 import org.gradle.api.file.DuplicatesStrategy
 import org.gradle.jvm.tasks.Jar
+import org.jetbrains.dokka.gradle.DokkaTask
 
 plugins {
     kotlin("jvm") version "2.0.0"
@@ -85,7 +86,9 @@ mavenPublishing {
     }
 }
 
-// Make publication metadata generation wait for Dokka's javadoc JAR
-tasks.named("generateMetadataFileForMavenPublication") {
-    dependsOn("dokkaJavadocJar")
+// Make the standard javadocJar package Dokka HTML output, so publication tasks
+// automatically depend on the correct inputs without referencing internal task names.
+tasks.named<Jar>("javadocJar") {
+    dependsOn(tasks.named<DokkaTask>("dokkaHtml"))
+    from(tasks.named<DokkaTask>("dokkaHtml").flatMap { it.outputDirectory })
 }
