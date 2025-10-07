@@ -1,5 +1,7 @@
 import org.gradle.api.file.DuplicatesStrategy
 import org.gradle.jvm.tasks.Jar
+import com.vanniktech.maven.publish.JavadocJar
+import com.vanniktech.maven.publish.KotlinJvm
 
 plugins {
     kotlin("jvm") version "2.0.0"
@@ -53,6 +55,7 @@ tasks.named<Jar>("sourcesJar") {
 mavenPublishing {
     // Set coordinates for the artifact
     coordinates(group.toString(), "fluid-jdbc", version.toString())
+    configure(KotlinJvm(javadocJar = JavadocJar.Dokka("dokkaHtml")))
 
     // Publish to Sonatype Central Portal
     publishToMavenCentral()
@@ -87,8 +90,8 @@ mavenPublishing {
 }
 
 // Configure signing keys from environment variables (for CI)
-val envSigningKey = System.getenv("SIGNING_KEY")
-val envSigningPass = System.getenv("SIGNING_PASSWORD")
+val envSigningKey: String? = System.getenv("SIGNING_KEY")
+val envSigningPass: String? = System.getenv("SIGNING_PASSWORD")
 if (!envSigningKey.isNullOrBlank()) {
     // The Vanniktech plugin applies the Signing plugin; we just feed it the key
     signing {
@@ -98,9 +101,5 @@ if (!envSigningKey.isNullOrBlank()) {
     logger.lifecycle("PGP signing not configured from env; if this is CI, set SIGNING_KEY and SIGNING_PASSWORD secrets.")
 }
 
-// Ensure module metadata generation runs after Dokka's javadoc JAR is produced
-afterEvaluate {
-    tasks.matching { it.name == "generateMetadataFileForMavenPublication" }.configureEach {
-        dependsOn(tasks.named("dokkaJavadocJar"))
-    }
-}
+// Avoid publishing two javadoc JARs: we let Vanniktech produce the single javadocJar from Dokka HTML
+tasks.matching { it.name == "dokkaJavadocJar" }.configureEach { enabled = false }
