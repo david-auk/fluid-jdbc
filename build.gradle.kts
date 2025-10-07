@@ -1,12 +1,12 @@
 import org.gradle.api.file.DuplicatesStrategy
 import org.gradle.jvm.tasks.Jar
-import org.jetbrains.dokka.gradle.DokkaTask
 
 plugins {
     kotlin("jvm") version "2.0.0"
     `java-library`
     id("com.vanniktech.maven.publish") version "0.34.0"
     id("org.jetbrains.dokka") version "1.9.20"
+    signing
 }
 
 sourceSets {
@@ -84,6 +84,18 @@ mavenPublishing {
             developerConnection.set("scm:git:ssh://git@github.com/david-auk/fluid-jdbc.git")
         }
     }
+}
+
+// Configure signing keys from environment variables (for CI)
+val envSigningKey = System.getenv("SIGNING_KEY")
+val envSigningPass = System.getenv("SIGNING_PASSWORD")
+if (!envSigningKey.isNullOrBlank()) {
+    // The Vanniktech plugin applies the Signing plugin; we just feed it the key
+    signing {
+        useInMemoryPgpKeys(envSigningKey, envSigningPass)
+    }
+} else {
+    logger.lifecycle("PGP signing not configured from env; if this is CI, set SIGNING_KEY and SIGNING_PASSWORD secrets.")
 }
 
 // Ensure module metadata generation runs after Dokka's javadoc JAR is produced
