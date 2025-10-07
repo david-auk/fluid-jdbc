@@ -84,3 +84,8 @@ mavenPublishing {
         }
     }
 }
+
+// Make publication metadata generation wait for Dokka's javadoc JAR
+tasks.named("generateMetadataFileForMavenPublication") {
+    dependsOn("dokkaJavadocJar")
+}
