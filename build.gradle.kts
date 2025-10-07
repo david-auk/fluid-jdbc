@@ -6,12 +6,17 @@ plugins {
     id("org.jetbrains.dokka") version "1.9.20"
 }
 
-//sourceSets {
-//    named("main") {
-//        java.srcDirs("src/main/java", "src/main/kotlin")
-//        resources.srcDirs("src/main/resources")
-//    }
-//}
+// safest: keep the first occurrence, drop the rest
+tasks.named<Jar>("sourcesJar") {
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+}
+
+sourceSets {
+    named("main") {
+        java.srcDirs("src/main/java", "src/main/kotlin")
+        resources.srcDirs("src/main/resources")
+    }
+}
 
 group = "io.github.david-auk"
 version = "0.1.0"
