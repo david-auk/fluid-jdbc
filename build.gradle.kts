@@ -40,6 +40,9 @@ dependencies {
     api(kotlin("stdlib"))
     testImplementation(kotlin("test"))
     testImplementation("org.junit.jupiter:junit-jupiter:5.11.0")
+    testImplementation(platform("org.junit:junit-bom:5.11.0"))
+    testImplementation("org.junit.jupiter:junit-jupiter")
+    testImplementation("org.reflections:reflections:0.10.2")
 
     // Jackson Databind (ObjectMapper lives here)
     implementation("com.fasterxml.jackson.core:jackson-databind:2.17.1")
@@ -93,7 +96,6 @@ mavenPublishing {
 val envSigningKey: String? = System.getenv("SIGNING_KEY")
 val envSigningPass: String? = System.getenv("SIGNING_PASSWORD")
 if (!envSigningKey.isNullOrBlank()) {
-    // The Vanniktech plugin applies the Signing plugin; we just feed it the key
     signing {
         useInMemoryPgpKeys(envSigningKey, envSigningPass)
     }

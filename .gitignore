@@ -17,5 +17,7 @@ buildNumber.properties
 .classpath
 /.idea/
 
+build
+
 # Keys
 *.asc
