@@ -6,11 +6,6 @@ plugins {
     id("org.jetbrains.dokka") version "1.9.20"
 }
 
-// safest: keep the first occurrence, drop the rest
-tasks.named<Jar>("sourcesJar") {
-    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
-}
-
 sourceSets {
     named("main") {
         java.srcDirs("src/main/java", "src/main/kotlin")
@@ -48,6 +43,9 @@ dependencies {
 }
 
 tasks.test { useJUnitPlatform() }
+tasks.named<Jar>("sourcesJar") {
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+}
 
 publishing {
     publications {
