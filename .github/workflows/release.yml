@@ -23,4 +23,8 @@ jobs:
           # GPG signing (ASCII-armored private key & passphrase)
           SIGNING_KEY: ${{ secrets.SIGNING_KEY }}
           SIGNING_PASSWORD: ${{ secrets.SIGNING_PASSWORD }}
-        run: ./gradlew publishAllPublicationsToMavenCentral --no-daemon --stacktrace
+        run: ./gradlew publishAllPublicationsToMavenCentral \
+          --no-daemon --stacktrace \
+          -PmavenCentralUsername="$MAVEN_CENTRAL_USERNAME" \
+          -PmavenCentralPassword="$MAVEN_CENTRAL_PASSWORD"
+#        run: ./gradlew publishAllPublicationsToMavenCentral --no-daemon --stacktrace
