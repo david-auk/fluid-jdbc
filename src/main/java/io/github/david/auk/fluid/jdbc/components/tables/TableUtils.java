@@ -1,7 +1,7 @@
 package io.github.david.auk.fluid.jdbc.components.tables;
 
-import io.github.david.auk.fluid.jdbc.annotations.table.PrimaryKey;
-import io.github.david.auk.fluid.jdbc.annotations.table.TableColumn;
+import io.github.david.auk.fluid.jdbc.annotations.table.field.PrimaryKey;
+import io.github.david.auk.fluid.jdbc.annotations.table.field.TableColumn;
 import io.github.david.auk.fluid.jdbc.annotations.table.TableName;
 
 import java.lang.reflect.AccessibleObject;

@@ -1,13 +1,15 @@
 package io.github.david.auk.fluid.jdbc.components.daos.querying;
 
 import io.github.david.auk.fluid.jdbc.components.daos.DAO;
+import io.github.david.auk.fluid.jdbc.components.results.ResultEntity;
+import io.github.david.auk.fluid.jdbc.components.tables.TableEntity;
 import org.jetbrains.annotations.Nullable;
 
 import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.List;
 
-public class QueryBuilder<T, K> {
+public class QueryBuilder<T extends TableEntity, K> {
     private final DAO<T, K> dao;
     private final List<FilterCriterion<?>> filters = new ArrayList<>();
     @Nullable
@@ -71,12 +73,12 @@ public class QueryBuilder<T, K> {
     /**
      * Execute the query and return matched entities.
      */
-    public List<T> get() {
+    public List<ResultEntity<T>> get() {
         return dao.get(filters, orderByField, ascending);
     }
 
-    public T getUnique() {
-        List<T> results = dao.get(filters, orderByField, ascending);
+    public ResultEntity<T> getUnique() {
+        List<ResultEntity<T>> results = dao.get(filters, orderByField, ascending);
         if (results.size() > 1) {
             throw new IllegalStateException("Multiple results found for query: " + filters);
         } else if (results.isEmpty()) {

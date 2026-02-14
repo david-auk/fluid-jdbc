@@ -1,11 +1,11 @@
-package io.github.david.auk.fluid.jdbc.annotations.table;
+package io.github.david.auk.fluid.jdbc.annotations.table.field;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
-// TODO Write JAVADOC
+@Target(ElementType.FIELD)
 @Retention(RetentionPolicy.RUNTIME)
-@Target(ElementType.CONSTRUCTOR)
-public @interface TableConstructor {}
+public @interface ForeignKey {
+}

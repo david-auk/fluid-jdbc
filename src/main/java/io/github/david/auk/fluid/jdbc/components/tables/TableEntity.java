@@ -3,6 +3,10 @@ package io.github.david.auk.fluid.jdbc.components.tables;
 
 import io.github.david.auk.fluid.jdbc.annotations.ValidatedBody;
 import io.github.david.auk.fluid.jdbc.annotations.table.*;
+import io.github.david.auk.fluid.jdbc.annotations.table.constructor.TableConstructor;
+import io.github.david.auk.fluid.jdbc.annotations.table.field.ForeignKey;
+import io.github.david.auk.fluid.jdbc.annotations.table.field.PrimaryKey;
+import io.github.david.auk.fluid.jdbc.annotations.table.field.TableColumn;
 import io.github.david.auk.fluid.jdbc.components.daos.DAO;
 
 import java.lang.reflect.Field;

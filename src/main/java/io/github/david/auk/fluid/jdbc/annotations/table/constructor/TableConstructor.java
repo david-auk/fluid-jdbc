@@ -1,4 +1,4 @@
-package io.github.david.auk.fluid.jdbc.annotations.table;
+package io.github.david.auk.fluid.jdbc.annotations.table.constructor;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
@@ -7,6 +7,5 @@ import java.lang.annotation.Target;
 
 // TODO Write JAVADOC
 @Retention(RetentionPolicy.RUNTIME)
-@Target(ElementType.FIELD)
-public @interface UniqueColumn {
-}
+@Target(ElementType.CONSTRUCTOR)
+public @interface TableConstructor {}

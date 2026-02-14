@@ -1,9 +1,10 @@
 package io.github.david.auk.fluid.jdbc.components.daos;
 
-import io.github.david.auk.fluid.jdbc.annotations.table.UniqueColumn;
+import io.github.david.auk.fluid.jdbc.annotations.table.field.UniqueColumn;
 import io.github.david.auk.fluid.jdbc.components.Database;
 import io.github.david.auk.fluid.jdbc.components.daos.querying.FilterCriterion;
 import io.github.david.auk.fluid.jdbc.components.daos.querying.QueryBuilder;
+import io.github.david.auk.fluid.jdbc.components.results.ResultEntity;
 import io.github.david.auk.fluid.jdbc.components.tables.Table;
 import io.github.david.auk.fluid.jdbc.components.tables.TableEntity;
 import io.github.david.auk.fluid.jdbc.components.tables.TableUtils;
@@ -13,7 +14,7 @@ import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
 
-public class DAO<T, K> implements AutoCloseable {
+public class DAO<T extends TableEntity, K> implements AutoCloseable {
 
     protected final Connection connection;
     private final Boolean connectionOpened;
@@ -40,17 +41,6 @@ public class DAO<T, K> implements AutoCloseable {
         this.connection = connection;
         this.connectionOpened = false;
         this.table = table;
-
-        // TODO check if validation computing tax is worth it
-//        try {
-//            if (connection != null && !connection.isClosed() && connection.isValid(0)) {
-//                this.connection = connection;
-//            } else {
-//                throw new IllegalArgumentException("Invalid connection");
-//            }
-//        } catch (SQLException e) {
-//            throw new RuntimeException(e);
-//        }
     }
 
     /**
@@ -161,8 +151,8 @@ public class DAO<T, K> implements AutoCloseable {
      * @param primaryKey the primary key value of the entity to retrieve
      * @return the entity if found; null otherwise
      */
-    public T get(K primaryKey) {
-        T entity = null;
+    public ResultEntity<T> get(K primaryKey) {
+        ResultEntity<T> entity = null;
 
         String query = "SELECT * FROM %s WHERE %s = ?";
         query = String.format(query, table.getTableName(), table.getPrimaryKeyColumnName());
@@ -197,7 +187,7 @@ public class DAO<T, K> implements AutoCloseable {
      * @throws RuntimeException         if a SQL error occurs
      * @throws IllegalArgumentException if any Field is invalid for this entity
      */
-    public List<T> get(
+    public List<ResultEntity<T>> get(
             List<FilterCriterion<?>> filters,
             Field orderByField,
             boolean ascending
@@ -209,7 +199,7 @@ public class DAO<T, K> implements AutoCloseable {
             // 2) bind parameters in the same order
             int idx = 1;
             for (FilterCriterion<?> criterion : filters) {
-                Object value = criterion.getValue();
+                Object value = criterion.value();
                 if (value != null) {
                     ps.setObject(idx++, value);
                 }
@@ -231,7 +221,7 @@ public class DAO<T, K> implements AutoCloseable {
      * @param isData     The data you want to match
      * @return Entities from query
      */
-    public <D> List<T> get(Field whereField, D isData) {
+    public <D> List<ResultEntity<T>> get(Field whereField, D isData) {
         return new QueryBuilder<>(this)
                 .where(whereField, isData)
                 .get();
@@ -247,11 +237,11 @@ public class DAO<T, K> implements AutoCloseable {
      * @throws RuntimeException if the field is not annotated with @UniqueColumn
      * @throws IllegalStateException if multiple results are found
      */
-    public <D> T getUnique(Field uniqueField, D isData) {
+    public <D> ResultEntity<T> getUnique(Field uniqueField, D isData) {
         if (!uniqueField.isAnnotationPresent(UniqueColumn.class)) {
             throw new RuntimeException("Field " + uniqueField.getName() + " is not annotated with @UniqueField");
         }
-        List<T> results = get(uniqueField, isData);
+        List<ResultEntity<T>> results = get(uniqueField, isData);
         if (results.size() > 1) {
             throw new IllegalStateException("Multiple results found for unique field: " + uniqueField.getName() + " with value: " + isData.toString());
         } else if (results.isEmpty()) {
@@ -291,10 +281,10 @@ public class DAO<T, K> implements AutoCloseable {
      *
      * @return a list of all entities
      */
-    public List<T> getAll() {
+    public List<ResultEntity<T>> getAll() {
         String query = "SELECT * FROM %s";
         query = String.format(query, table.getTableName());
-        List<T> entities;
+        List<ResultEntity<T>> entities;
         try {
             Statement statement = connection.createStatement();
             entities = getEntities(statement.executeQuery(query));
@@ -312,10 +302,10 @@ public class DAO<T, K> implements AutoCloseable {
      * @return a list of entities built from the ResultSet
      * @throws SQLException if a database access error occurs
      */
-    protected List<T> getEntities(ResultSet resultSet) throws SQLException {
-        List<T> entities = new ArrayList<>();
+    protected List<ResultEntity<T>> getEntities(ResultSet resultSet) throws SQLException {
+        List<ResultEntity<T>> entities = new ArrayList<>();
         while (resultSet.next()) {
-            T entity = table.buildFromTableWildcardQuery(connection, resultSet);
+            ResultEntity<T> entity = table.buildFromTableWildcardQuery(connection, resultSet);
             entities.add(entity);
         }
         return entities;

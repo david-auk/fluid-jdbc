@@ -1,4 +1,4 @@
-package io.github.david.auk.fluid.jdbc.annotations.table;
+package io.github.david.auk.fluid.jdbc.annotations.table.field;
 
 //import com.mcm.backend.app.api.utils.components.ValidatedBodyResolver;
 
@@ -13,7 +13,7 @@ import java.lang.annotation.*;
  * and will always be passed as {@code null} to the entity constructor.
  * </p>
  *
- * @see io.github.david.auk.fluid.jdbc.annotations.table.PrimaryKey
+ * @see PrimaryKey
  * @see TableColumn
  */
 @Target({ElementType.FIELD, ElementType.PARAMETER})

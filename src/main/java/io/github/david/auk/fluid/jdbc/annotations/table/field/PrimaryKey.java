@@ -1,4 +1,4 @@
-package io.github.david.auk.fluid.jdbc.annotations.table;
+package io.github.david.auk.fluid.jdbc.annotations.table.field;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
