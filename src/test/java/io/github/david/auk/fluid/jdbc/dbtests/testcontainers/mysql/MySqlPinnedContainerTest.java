@@ -1,7 +1,7 @@
-package io.github.david.auk.fluid.jdbc.testcontainers.mysql;
+package io.github.david.auk.fluid.jdbc.dbtests.testcontainers.mysql;
 
-import io.github.david.auk.fluid.jdbc.support.AbstractJdbcContainerTest;
-import io.github.david.auk.fluid.jdbc.support.ContainerSpec;
+import io.github.david.auk.fluid.jdbc.dbtests.support.AbstractJdbcContainerTest;
+import io.github.david.auk.fluid.jdbc.dbtests.support.ContainerSpec;
 import org.testcontainers.containers.MySQLContainer;
 
 class MySqlPinnedContainerTest extends AbstractJdbcContainerTest {

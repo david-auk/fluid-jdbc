@@ -1,4 +1,4 @@
-package io.github.david.auk.fluid.jdbc.support;
+package io.github.david.auk.fluid.jdbc.dbtests.support;
 
 import org.testcontainers.containers.JdbcDatabaseContainer;
 

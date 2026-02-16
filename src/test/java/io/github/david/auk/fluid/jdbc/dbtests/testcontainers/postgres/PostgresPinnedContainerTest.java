@@ -1,7 +1,7 @@
-package io.github.david.auk.fluid.jdbc.testcontainers.postgres;
+package io.github.david.auk.fluid.jdbc.dbtests.testcontainers.postgres;
 
-import io.github.david.auk.fluid.jdbc.support.AbstractJdbcContainerTest;
-import io.github.david.auk.fluid.jdbc.support.ContainerSpec;
+import io.github.david.auk.fluid.jdbc.dbtests.support.AbstractJdbcContainerTest;
+import io.github.david.auk.fluid.jdbc.dbtests.support.ContainerSpec;
 import org.testcontainers.containers.PostgreSQLContainer;
 
 class PostgresPinnedContainerTest extends AbstractJdbcContainerTest {
