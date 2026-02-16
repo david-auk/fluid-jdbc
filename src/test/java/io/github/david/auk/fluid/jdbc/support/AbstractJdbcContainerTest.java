@@ -1,9 +1,9 @@
 package io.github.david.auk.fluid.jdbc.support;
 
 import io.github.david.auk.fluid.jdbc.components.Database;
-import io.github.david.auk.fluid.jdbc.components.daos.DAO;
-import io.github.david.auk.fluid.jdbc.components.tables.TableEntity;
-import io.github.david.auk.fluid.jdbc.factories.DAOFactory;
+import io.github.david.auk.fluid.jdbc.contracts.crud.CrudContract;
+import io.github.david.auk.fluid.jdbc.contracts.foreignkey.ForeignKeyContract;
+import io.github.david.auk.fluid.jdbc.contracts.inheritance.InheritanceContract;
 import org.junit.jupiter.api.*;
 import org.testcontainers.containers.JdbcDatabaseContainer;
 import org.testcontainers.junit.jupiter.Testcontainers;
@@ -14,17 +14,22 @@ import java.sql.Statement;
 
 @Testcontainers
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-public abstract class AbstractJdbcContainerTest {
+public abstract class AbstractJdbcContainerTest
+        implements CrudContract, ForeignKeyContract, InheritanceContract {
 
     private JdbcDatabaseContainer<?> container;
+
     private Connection connection;
 
+    /**
+     * Implemented by subclasses: pinned vs latest spec.
+     */
     protected abstract ContainerSpec spec();
 
     @BeforeAll
     void startContainerAndConfigureDatabase() {
-        container = spec().factory().get();
-        container.start();
+        this.container = spec().factory().get();
+        this.container.start();
 
         System.setProperty("datasource.url", container.getJdbcUrl());
         System.setProperty("datasource.username", container.getUsername());
@@ -37,27 +42,23 @@ public abstract class AbstractJdbcContainerTest {
     }
 
     @BeforeEach
-    void openConnection() {
-        connection = Database.getConnection();
+    void setupSchemaAndDao() {
+        this.connection = Database.getConnection();
+
+        try (Statement statement = connection.createStatement()) {
+            statement.execute(dropTableSql());
+            statement.execute(createTableSql());
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     @AfterEach
-    void closeConnection() throws Exception {
-        if (connection != null) connection.close();
+    void cleanup() throws Exception {
+        if (connection != null && !connection.isClosed()) connection.close();
     }
 
-    protected final Connection connection() {
-        return connection;
-    }
+    // ---- contract accessors ----
 
-    public final <TE extends TableEntity> DAO<TE, String> prepareDao(TestScenario<TE> scenario) {
-        try (Statement statement = connection.createStatement()) {
-            statement.execute(scenario.entityUtil().dropTableSql());
-            statement.execute(scenario.entityUtil().createTableSql());
-        } catch (SQLException e) {
-            throw new RuntimeException("Schema init failed for scenario: " + scenario.name(), e);
-        }
-
-        return DAOFactory.createDAO(connection, scenario.entityClass());
-    }
+    public final Connection connection() { return connection; }
 }

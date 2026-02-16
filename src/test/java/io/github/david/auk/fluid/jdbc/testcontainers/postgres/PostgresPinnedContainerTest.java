@@ -1,13 +1,19 @@
 package io.github.david.auk.fluid.jdbc.testcontainers.postgres;
 
-import io.github.david.auk.fluid.jdbc.support.AbstractDatabaseContractSuiteTest;
+import io.github.david.auk.fluid.jdbc.support.AbstractJdbcContainerTest;
 import io.github.david.auk.fluid.jdbc.support.ContainerSpec;
-import io.github.david.auk.fluid.jdbc.support.DatabaseTestSupport;
+import org.testcontainers.containers.PostgreSQLContainer;
 
-class PostgresPinnedContainerTest extends AbstractDatabaseContractSuiteTest {
+class PostgresPinnedContainerTest extends AbstractJdbcContainerTest {
 
     @Override
     protected ContainerSpec spec() {
-        return DatabaseTestSupport.POSTGRES_PINNED;
+        return new ContainerSpec(
+                "postgres:pinned",
+                () -> new PostgreSQLContainer<>("postgres:16-alpine") // TODO Move to resources
+                        .withDatabaseName("testdb")
+                        .withUsername("test")
+                        .withPassword("test")
+        );
     }
 }
