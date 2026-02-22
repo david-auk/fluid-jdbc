@@ -12,7 +12,7 @@ import java.util.Objects;
 @TableName("local_test_table")
 public record EntityLocal(
         @PrimaryKey @TableColumn String name,
-        @TableColumn @ForeignKey EntityForeign foreignEntity
+        @TableColumn(name = "foreign_entity_name") @ForeignKey EntityForeign foreignEntity
 ) implements TableEntity {
 
     @TableConstructor

@@ -20,6 +20,7 @@ public abstract class AbstractJdbcContainerTest implements ContractCrud, Contrac
     private JdbcDatabaseContainer<?> container;
 
     protected Connection connection;
+    protected Connection connectionTransactional;
 
     private static void execAll(Connection c, String... sqlStatements) {
         try (java.sql.Statement s = c.createStatement()) {
@@ -47,7 +48,7 @@ public abstract class AbstractJdbcContainerTest implements ContractCrud, Contrac
                 "DROP TABLE IF EXISTS crud_test_table",
 
                 // Inheritance (placeholder)
-                "DROP TABLE IF EXISTS inheritance_test_table"};
+                "DROP TABLE IF EXISTS inherit_child", "DROP TABLE IF EXISTS inherit_base"};
     }
 
     /**
@@ -86,10 +87,19 @@ public abstract class AbstractJdbcContainerTest implements ContractCrud, Contrac
                 )
                 """,
 
-                // Inheritance (placeholder)
+                // Inheritance
+                // Child `inherits` base by sharing the same PK and referencing base(id)
                 """
-                CREATE TABLE inheritance_test_table (
-                    id VARCHAR(36) PRIMARY KEY
+                CREATE TABLE inherit_base (
+                    id VARCHAR(255) PRIMARY KEY
+                )""", """
+                CREATE TABLE inherit_child (
+                    id VARCHAR(255) PRIMARY KEY,
+                    value_int INT NOT NULL,
+                    CONSTRAINT fk_inherit_child_base
+                        FOREIGN KEY (id)
+                        REFERENCES inherit_base(id)
+                        ON DELETE CASCADE
                 )
                 """};
     }
@@ -118,9 +128,16 @@ public abstract class AbstractJdbcContainerTest implements ContractCrud, Contrac
     @BeforeEach
     void setup() {
 
-        this.connection = Database.getConnection();
+        connection = Database.getConnection();
+        connectionTransactional = Database.getConnection();
 
-        execAll(this.connection, createAllTablesSql());
+        try {
+            connectionTransactional.setAutoCommit(false);
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+
+        execAll(connection, createAllTablesSql());
     }
 
     @AfterEach
@@ -134,4 +151,5 @@ public abstract class AbstractJdbcContainerTest implements ContractCrud, Contrac
     public final Connection connection() {
         return connection;
     }
+    public final Connection connectionTransactional() {return connectionTransactional;}
 }
