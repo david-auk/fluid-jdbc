@@ -1,0 +1,22 @@
+package io.github.david.auk.fluid.jdbc.dbtests.contracts.foreignkey;
+
+import io.github.david.auk.fluid.jdbc.annotations.table.TableName;
+import io.github.david.auk.fluid.jdbc.annotations.table.constructor.TableConstructor;
+import io.github.david.auk.fluid.jdbc.annotations.table.field.PrimaryKey;
+import io.github.david.auk.fluid.jdbc.annotations.table.field.TableColumn;
+import io.github.david.auk.fluid.jdbc.components.tables.TableEntity;
+
+import java.util.Objects;
+
+@TableName("foreign_test_table")
+public record EntityForeign(
+        @PrimaryKey @TableColumn String name,
+        @TableColumn Integer value
+        ) implements TableEntity {
+
+    @TableConstructor
+    public EntityForeign(String name, Integer value) {
+        this.name = Objects.requireNonNull(name, "name");
+        this.value = Objects.requireNonNull(value, "value");
+    }
+}

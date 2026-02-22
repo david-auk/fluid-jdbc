@@ -1,6 +1,6 @@
 package io.github.david.auk.fluid.jdbc.components.daos;
 
-import io.github.david.auk.fluid.jdbc.annotations.table.UniqueColumn;
+import io.github.david.auk.fluid.jdbc.annotations.table.field.UniqueColumn;
 import io.github.david.auk.fluid.jdbc.components.Database;
 import io.github.david.auk.fluid.jdbc.components.daos.querying.FilterCriterion;
 import io.github.david.auk.fluid.jdbc.components.daos.querying.QueryBuilder;
@@ -13,44 +13,33 @@ import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
 
-public class DAO<T, K> implements AutoCloseable {
+public class Dao<TE extends TableEntity, PK> implements AutoCloseable {
 
     protected final Connection connection;
     private final Boolean connectionOpened;
-    private final Table<T, K> table;
+    private final Table<TE, PK> table;
 
     /**
-     * Constructs a DAO with a new database connection for the specified table.
+     * Constructs a Dao with a new database connection for the specified table.
      *
-     * @param table the table metadata for which this DAO operates
+     * @param table the table metadata for which this Dao operates
      */
-    public DAO(Table<T, K> table) {
+    public Dao(Table<TE, PK> table) {
         this.table = table;
         this.connection = Database.getConnection();
         this.connectionOpened = true;
     }
 
     /**
-     * Constructs a DAO reusing an existing database connection for the specified table.
+     * Constructs a Dao reusing an existing database connection for the specified table.
      *
      * @param connection the existing SQL connection
-     * @param table the table metadata for which this DAO operates
+     * @param table the table metadata for which this Dao operates
      */
-    public DAO(Connection connection, Table<T, K> table) {
+    public Dao(Connection connection, Table<TE, PK> table) {
         this.connection = connection;
         this.connectionOpened = false;
         this.table = table;
-
-        // TODO check if validation computing tax is worth it
-//        try {
-//            if (connection != null && !connection.isClosed() && connection.isValid(0)) {
-//                this.connection = connection;
-//            } else {
-//                throw new IllegalArgumentException("Invalid connection");
-//            }
-//        } catch (SQLException e) {
-//            throw new RuntimeException(e);
-//        }
     }
 
     /**
@@ -59,7 +48,7 @@ public class DAO<T, K> implements AutoCloseable {
      * @param primaryKey the primary key value to check
      * @return true if a record with the primary key exists; false otherwise
      */
-    public boolean existsByPrimaryKey(K primaryKey) {
+    public boolean existsByPrimaryKey(PK primaryKey) {
         if (primaryKey == null) {
             return false;
         }
@@ -108,7 +97,7 @@ public class DAO<T, K> implements AutoCloseable {
      * @param entity the entity to check existence for
      * @return true if the entity exists; false otherwise
      */
-    public boolean exists(T entity) {
+    public boolean exists(TE entity) {
         if (entity == null) {
             return false;
         }
@@ -120,7 +109,7 @@ public class DAO<T, K> implements AutoCloseable {
      *
      * @param entity the entity to insert
      */
-    public void add(T entity) {
+    public void add(TE entity) {
         if (!exists(entity)) {
             try {
                 PreparedStatement addStatement = connection.prepareStatement(table.getInsertQuery());
@@ -138,7 +127,7 @@ public class DAO<T, K> implements AutoCloseable {
      * @param entity the entity to update
      * @throws RuntimeException if the entity does not exist or a SQL error occurs
      */
-    public void update(T entity) {
+    public void update(TE entity) {
         if (!exists(entity)) {
             throw new RuntimeException("Entity does not exist.");
         }
@@ -156,13 +145,48 @@ public class DAO<T, K> implements AutoCloseable {
     }
 
     /**
+     * Updates the primary key value of an existing record.
+     * <p>
+     * Uses the table's generated UPDATE PK query and binds the new and old
+     * primary key values in order (SET newPk, WHERE oldPk).
+     */
+    public void update(TE oldEntity, TE newEntity) {
+        if (!exists(oldEntity)) {
+            throw new RuntimeException("Entity does not exist.");
+        }
+        try {
+            PreparedStatement ps = connection.prepareStatement(table.getUpdatePrimaryKeyQuery());
+
+            // bind new PK and old PK using Table-level helper
+            Object newPk = table.getPrimaryKey(newEntity);
+            Object oldPk = table.getPrimaryKey(oldEntity);
+            table.prepareUpdatePrimaryKeyStatement(ps, newPk, oldPk);
+
+            // Update the PK
+            int rowsAffected = ps.executeUpdate();
+            if (rowsAffected == 0) {
+                throw new RuntimeException("No rows affected");
+            }
+
+            try {
+                // Update the other fields
+                update(newEntity);
+            } catch (RuntimeException e) { // TODO Differentiate no rows affected Exception from other exceptions for better error handling
+                // Pass because maybe only the PK was updated
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    /**
      * Retrieves an entity by its primary key.
      *
      * @param primaryKey the primary key value of the entity to retrieve
      * @return the entity if found; null otherwise
      */
-    public T get(K primaryKey) {
-        T entity = null;
+    public TE get(PK primaryKey) {
+        TE entity = null;
 
         String query = "SELECT * FROM %s WHERE %s = ?";
         query = String.format(query, table.getTableName(), table.getPrimaryKeyColumnName());
@@ -197,7 +221,7 @@ public class DAO<T, K> implements AutoCloseable {
      * @throws RuntimeException         if a SQL error occurs
      * @throws IllegalArgumentException if any Field is invalid for this entity
      */
-    public List<T> get(
+    public List<TE> get(
             List<FilterCriterion<?>> filters,
             Field orderByField,
             boolean ascending
@@ -209,7 +233,7 @@ public class DAO<T, K> implements AutoCloseable {
             // 2) bind parameters in the same order
             int idx = 1;
             for (FilterCriterion<?> criterion : filters) {
-                Object value = criterion.getValue();
+                Object value = criterion.value();
                 if (value != null) {
                     ps.setObject(idx++, value);
                 }
@@ -231,7 +255,7 @@ public class DAO<T, K> implements AutoCloseable {
      * @param isData     The data you want to match
      * @return Entities from query
      */
-    public <D> List<T> get(Field whereField, D isData) {
+    public <D> List<TE> get(Field whereField, D isData) {
         return new QueryBuilder<>(this)
                 .where(whereField, isData)
                 .get();
@@ -247,11 +271,11 @@ public class DAO<T, K> implements AutoCloseable {
      * @throws RuntimeException if the field is not annotated with @UniqueColumn
      * @throws IllegalStateException if multiple results are found
      */
-    public <D> T getUnique(Field uniqueField, D isData) {
+    public <D> TE getUnique(Field uniqueField, D isData) {
         if (!uniqueField.isAnnotationPresent(UniqueColumn.class)) {
             throw new RuntimeException("Field " + uniqueField.getName() + " is not annotated with @UniqueField");
         }
-        List<T> results = get(uniqueField, isData);
+        List<TE> results = get(uniqueField, isData);
         if (results.size() > 1) {
             throw new IllegalStateException("Multiple results found for unique field: " + uniqueField.getName() + " with value: " + isData.toString());
         } else if (results.isEmpty()) {
@@ -267,7 +291,7 @@ public class DAO<T, K> implements AutoCloseable {
      * @param primaryKey the primary key value of the record to delete
      * @throws RuntimeException if the record does not exist or a SQL error occurs
      */
-    public void delete(K primaryKey) {
+    public void delete(PK primaryKey) {
         if (!existsByPrimaryKey(primaryKey)) {
             throw new RuntimeException("Record does not exist.");
         }
@@ -291,10 +315,10 @@ public class DAO<T, K> implements AutoCloseable {
      *
      * @return a list of all entities
      */
-    public List<T> getAll() {
+    public List<TE> getAll() {
         String query = "SELECT * FROM %s";
         query = String.format(query, table.getTableName());
-        List<T> entities;
+        List<TE> entities;
         try {
             Statement statement = connection.createStatement();
             entities = getEntities(statement.executeQuery(query));
@@ -312,10 +336,10 @@ public class DAO<T, K> implements AutoCloseable {
      * @return a list of entities built from the ResultSet
      * @throws SQLException if a database access error occurs
      */
-    protected List<T> getEntities(ResultSet resultSet) throws SQLException {
-        List<T> entities = new ArrayList<>();
+    protected List<TE> getEntities(ResultSet resultSet) throws SQLException {
+        List<TE> entities = new ArrayList<>();
         while (resultSet.next()) {
-            T entity = table.buildFromTableWildcardQuery(connection, resultSet);
+            TE entity = table.buildFromTableWildcardQuery(connection, resultSet);
             entities.add(entity);
         }
         return entities;

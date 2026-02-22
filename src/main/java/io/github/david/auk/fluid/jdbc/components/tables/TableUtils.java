@@ -1,8 +1,9 @@
 package io.github.david.auk.fluid.jdbc.components.tables;
 
-import io.github.david.auk.fluid.jdbc.annotations.table.PrimaryKey;
-import io.github.david.auk.fluid.jdbc.annotations.table.TableColumn;
+import io.github.david.auk.fluid.jdbc.annotations.table.field.PrimaryKey;
+import io.github.david.auk.fluid.jdbc.annotations.table.field.TableColumn;
 import io.github.david.auk.fluid.jdbc.annotations.table.TableName;
+import io.github.david.auk.fluid.jdbc.annotations.table.constructor.TableInherits;
 
 import java.lang.reflect.AccessibleObject;
 import java.lang.reflect.Field;
@@ -21,27 +22,92 @@ public class TableUtils {
      * Returns the primary‐key accessor, which may be either:
      *  - a Field annotated with {@link PrimaryKey}, or
      *  - a zero‐arg Method annotated {@link PrimaryKey}
+     *
+     * Field-based PK is preferred over method-based PK.
+     *
+     * Validation rules enforced here:
+     *  - At most one @PrimaryKey member may exist (across fields + methods).
+     *  - A @PrimaryKey method must be zero-arg.
+     *  - If @TableInherits is present, the class must actually extend the declared base.
      */
+    // TODO Subdivide logic into smaller methods
     public static AccessibleObject getPrimaryKeyMember(Class<?> clazz) {
-        // 1. look for FIELD @PrimaryKey
+        // 1) If @TableInherits is present, the entity must actually extend the declared base class.
+        // This check must run even when the entity declares its own @PrimaryKey.
+        Class<?> inheritedBase = null;
+        TableInherits inheritsAnn = clazz.getAnnotation(TableInherits.class);
+        if (inheritsAnn != null) {
+            inheritedBase = inheritsAnn.value();
+            if (!inheritedBase.isAssignableFrom(clazz)) {
+                throw new IllegalStateException(
+                        "@TableInherits(" + inheritedBase.getName() + ") present but " +
+                                clazz.getName() + " does not extend " + inheritedBase.getName()
+                );
+            }
+        }
+
+        // 2) collect all declared @PrimaryKey fields
+        List<Field> pkFields = new ArrayList<>();
         for (Field f : clazz.getDeclaredFields()) {
             if (f.isAnnotationPresent(PrimaryKey.class)) {
                 f.setAccessible(true);
-                return f;
+                pkFields.add(f);
             }
         }
-        // 2. look for METHOD @PrimaryKey
+
+        // 3) collect all declared @PrimaryKey methods
+        List<Method> pkMethods = new ArrayList<>();
         for (Method m : clazz.getDeclaredMethods()) {
             if (m.isAnnotationPresent(PrimaryKey.class)) {
                 if (m.getParameterCount() != 0) {
                     throw new IllegalArgumentException(
-                            "@PrimaryKey method must be zero‐arg: " + m.getName());
+                            "@PrimaryKey method must be zero-arg: " + m.getName());
                 }
                 m.setAccessible(true);
-                return m;
+                pkMethods.add(m);
             }
         }
-        throw new IllegalArgumentException(
+
+        // 4) reject duplicates (across fields and/or methods)
+        int pkCount = pkFields.size() + pkMethods.size();
+        if (pkCount > 1) {
+            // Special case: Java records can surface the same component annotation on BOTH
+            // the underlying private final field and the generated accessor method.
+            // If we see exactly 1 PK field + 1 PK method that represent the same record component,
+            // treat it as a single PK and prefer the field.
+            if (clazz.isRecord() && pkFields.size() == 1 && pkMethods.size() == 1) {
+                Field f = pkFields.getFirst();
+                Method m = pkMethods.getFirst();
+                boolean sameName = m.getName().equals(f.getName());
+                boolean sameType = m.getReturnType().equals(f.getType());
+                boolean zeroArg = m.getParameterCount() == 0;
+                if (sameName && sameType && zeroArg) {
+                    return f;
+                }
+            }
+
+            String fieldNames = pkFields.stream().map(Field::getName).collect(Collectors.joining(", "));
+            String methodNames = pkMethods.stream().map(Method::getName).collect(Collectors.joining(", "));
+            throw new IllegalStateException(
+                    "Multiple @PrimaryKey members found in " + clazz.getName() +
+                            ". Fields: [" + fieldNames + "] Methods: [" + methodNames + "]"
+            );
+        }
+
+        // 5) prefer field PK when present
+        if (pkFields.size() == 1) {
+            return pkFields.getFirst();
+        }
+        if (pkMethods.size() == 1) {
+            return pkMethods.getFirst();
+        }
+
+        // 6) Try via parent entity's PK if @TableInherits is present
+        if (inheritedBase != null) {
+            return getPrimaryKeyMember(inheritedBase);
+        }
+
+        throw new IllegalStateException(
                 "No @PrimaryKey field or method found in " + clazz.getName());
     }
 
@@ -55,6 +121,23 @@ public class TableUtils {
         } else {
             return ((Method) pkMember).getReturnType();
         }
+    }
+
+    /**
+     * Resolve the physical column name for the primary key, following inheritance if needed.
+     * Only supports field-based primary keys; method-based PKs cannot reliably yield a column name.
+     */
+    public static String getPrimaryKeyColumnName(Class<?> clazz) {
+        AccessibleObject pkMember = getPrimaryKeyMember(clazz);
+        if (pkMember instanceof Field f) {
+            TableColumn tc = f.getAnnotation(TableColumn.class);
+            if (tc != null && !tc.name().isEmpty()) {
+                return tc.name();
+            }
+            return f.getName();
+        }
+        throw new UnsupportedOperationException(
+                "Method-based @PrimaryKey not supported for column-name resolution. Use a field-based PK or provide an explicit mapping.");
     }
 
     /**
@@ -144,6 +227,41 @@ public class TableUtils {
         return String.format(
                 "UPDATE %s SET %s WHERE %s",
                 tableName, assignments, whereClause
+        );
+    }
+
+
+    /**
+     * Build an UPDATE statement that updates the primary key value.
+     * <p>
+     * Only supported for a single-column primary key that is declared as a field annotated with {@link PrimaryKey}.
+     * Method-based/computed primary keys are treated as immutable and are not supported here.
+     * <p>
+     * Resulting SQL:
+     *   UPDATE {@code table} SET {@code pkCol} = ? WHERE {@code pkCol} = ?
+     */
+    public static String buildUpdatePrimaryKeyQuery(Class<?> clazz) {
+        String tableName = getTableName(clazz);
+
+        AccessibleObject pkMember = getPrimaryKeyMember(clazz);
+        if (!(pkMember instanceof Field pkField)) {
+            throw new UnsupportedOperationException(
+                    "Updating the primary key is only supported when @PrimaryKey is declared on a Field (single-column PK). " +
+                    "Method-based/computed primary keys are not supported: " + clazz.getName()
+            );
+        }
+
+        // Resolve PK column name (supports inherited PK fields).
+        // This method only supports field-based PKs; method-based PKs are rejected above.
+        String pkCol = getPrimaryKeyColumnName(clazz);
+        if (pkCol == null || pkCol.isBlank()) {
+            throw new IllegalStateException(
+                    "Primary key field has no resolvable column name: " + pkField.getName());
+        }
+
+        return String.format(
+                "UPDATE %s SET %s = ? WHERE %s = ?",
+                tableName, pkCol, pkCol
         );
     }
 

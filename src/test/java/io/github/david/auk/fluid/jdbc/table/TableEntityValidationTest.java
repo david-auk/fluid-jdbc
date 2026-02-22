@@ -1,6 +1,12 @@
-package io.github.david.auk.fluid.jdbc.components.tables;
+package io.github.david.auk.fluid.jdbc.table;
 
 import io.github.david.auk.fluid.jdbc.annotations.table.*;
+import io.github.david.auk.fluid.jdbc.annotations.table.constructor.TableConstructor;
+import io.github.david.auk.fluid.jdbc.annotations.table.constructor.TableInherits;
+import io.github.david.auk.fluid.jdbc.annotations.table.field.ForeignKey;
+import io.github.david.auk.fluid.jdbc.annotations.table.field.PrimaryKey;
+import io.github.david.auk.fluid.jdbc.annotations.table.field.TableColumn;
+import io.github.david.auk.fluid.jdbc.components.tables.TableEntity;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Assertions;
 import java.util.UUID;
@@ -90,7 +96,7 @@ class TableEntityValidationTest {
     @Test
     void primaryKeyMethodWithParamsShouldThrow() {
         Assertions.assertThrows(
-                IllegalStateException.class,
+                IllegalArgumentException.class,
                 () -> TableEntity.validateEntity(BadMethodPkEntity.class),
                 "Expected @PrimaryKey method with parameters to fail"
         );
@@ -301,6 +307,164 @@ class TableEntityValidationTest {
         Assertions.assertDoesNotThrow(
                 () -> TableEntity.validateEntity(WrapperColumnEntity.class),
                 "Expected @TableColumn on wrapper type to pass"
+        );
+    }
+
+    // ---------- Inheritance (@TableInherits) validation ----------
+
+    @TableName("inherit_base")
+    static class InheritBaseEntity implements TableEntity {
+        @PrimaryKey @TableColumn private final UUID id;
+
+        @TableConstructor
+        public InheritBaseEntity(UUID id) {
+            this.id = id;
+        }
+
+        public UUID getId() {
+            return id;
+        }
+    }
+
+    @TableName("inherit_child")
+    @TableInherits(InheritBaseEntity.class)
+    static class InheritChildEntity extends InheritBaseEntity implements TableEntity {
+        @TableColumn(name = "value_int")
+        private final Integer valueInt;
+
+        @TableConstructor
+        public InheritChildEntity(InheritBaseEntity base, Integer valueInt) {
+            super(base.getId());
+            this.valueInt = valueInt;
+        }
+
+        public Integer getValueInt() {
+            return valueInt;
+        }
+    }
+
+    /**
+     * Scenario I1: Child entity annotated with @TableInherits may omit @PrimaryKey,
+     * as long as the base class (or its superclasses up to the declared base) defines it.
+     */
+    @Test
+    void inheritedEntityMayOmitPrimaryKeyShouldPass() {
+        Assertions.assertDoesNotThrow(
+                () -> TableEntity.validateEntity(InheritChildEntity.class),
+                "Expected inherited entity without @PrimaryKey to pass when PK exists on base"
+        );
+    }
+
+    @TableName("inherit_base_method_pk")
+    static class InheritBaseMethodPkEntity implements TableEntity {
+        @TableColumn private final UUID id;
+
+        @TableConstructor
+        public InheritBaseMethodPkEntity(UUID id) {
+            this.id = id;
+        }
+
+        @PrimaryKey
+        public UUID getId() {
+            return id;
+        }
+    }
+
+    @TableName("inherit_child_method_pk")
+    @TableInherits(InheritBaseMethodPkEntity.class)
+    static class InheritChildMethodPkEntity extends InheritBaseMethodPkEntity implements TableEntity {
+        @TableColumn(name = "value_int")
+        private final Integer valueInt;
+
+        @TableConstructor
+        public InheritChildMethodPkEntity(InheritBaseMethodPkEntity base, Integer valueInt) {
+            super(base.getId());
+            this.valueInt = valueInt;
+        }
+
+        public Integer getValueInt() {
+            return valueInt;
+        }
+    }
+
+    /**
+     * Scenario I1b: Inherited entity may omit @PrimaryKey when the base defines a method-level PK.
+     */
+    @Test
+    void inheritedEntityMayOmitPrimaryKeyWhenBaseUsesMethodPkShouldPass() {
+        Assertions.assertDoesNotThrow(
+                () -> TableEntity.validateEntity(InheritChildMethodPkEntity.class),
+                "Expected inherited entity without @PrimaryKey to pass when PK exists on base method"
+        );
+    }
+
+    @TableName("inherit_base_no_pk")
+    static class InheritBaseNoPkEntity implements TableEntity {
+        @TableColumn private final UUID id;
+
+        @TableConstructor
+        public InheritBaseNoPkEntity(UUID id) {
+            this.id = id;
+        }
+
+        public UUID getId() {
+            return id;
+        }
+    }
+
+    @TableName("inherit_child_no_pk")
+    @TableInherits(InheritBaseNoPkEntity.class)
+    static class InheritChildNoPkEntity extends InheritBaseNoPkEntity implements TableEntity {
+        @TableColumn(name = "value_int")
+        private final Integer valueInt;
+
+        @TableConstructor
+        public InheritChildNoPkEntity(InheritBaseNoPkEntity base, Integer valueInt) {
+            super(base.getId());
+            this.valueInt = valueInt;
+        }
+
+        public Integer getValueInt() {
+            return valueInt;
+        }
+    }
+
+    /**
+     * Scenario I1c: Inherited entity must still have a @PrimaryKey somewhere on the declared base chain.
+     */
+    @Test
+    void inheritedEntityWithoutAnyPrimaryKeyInBaseChainShouldThrow() {
+        Assertions.assertThrows(
+                IllegalStateException.class,
+                () -> TableEntity.validateEntity(InheritChildNoPkEntity.class),
+                "Expected inherited entity to fail when no @PrimaryKey exists on the declared base chain"
+        );
+    }
+
+    @TableName("inherit_wrong_base")
+    static class WrongBaseEntity implements TableEntity {
+        @PrimaryKey @TableColumn private final UUID id;
+        @TableConstructor
+        public WrongBaseEntity(UUID id) { this.id = id; }
+    }
+
+    @TableName("inherit_declares_wrong_base")
+    @TableInherits(WrongBaseEntity.class)
+    static class InheritDeclaresWrongBaseEntity implements TableEntity {
+        @PrimaryKey @TableColumn private final UUID id;
+        @TableConstructor
+        public InheritDeclaresWrongBaseEntity(UUID id) { this.id = id; }
+    }
+
+    /**
+     * Scenario I2: If @TableInherits is present, the entity must actually extend the declared base class.
+     */
+    @Test
+    void tableInheritsMustExtendDeclaredBaseShouldThrow() {
+        Assertions.assertThrows(
+                IllegalStateException.class,
+                () -> TableEntity.validateEntity(InheritDeclaresWrongBaseEntity.class),
+                "Expected @TableInherits without extending the base to fail"
         );
     }
 }

@@ -1,20 +1,21 @@
 package io.github.david.auk.fluid.jdbc.components.daos.querying;
 
-import io.github.david.auk.fluid.jdbc.components.daos.DAO;
+import io.github.david.auk.fluid.jdbc.components.daos.Dao;
+import io.github.david.auk.fluid.jdbc.components.tables.TableEntity;
 import org.jetbrains.annotations.Nullable;
 
 import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.List;
 
-public class QueryBuilder<T, K> {
-    private final DAO<T, K> dao;
+public class QueryBuilder<T extends TableEntity, K> {
+    private final Dao<T, K> dao;
     private final List<FilterCriterion<?>> filters = new ArrayList<>();
     @Nullable
     private Field orderByField;
     private boolean ascending = true;
 
-    public QueryBuilder(DAO<T, K> dao) {
+    public QueryBuilder(Dao<T, K> dao) {
         this.dao = dao;
     }
 

@@ -3,14 +3,21 @@ package io.github.david.auk.fluid.jdbc.components.tables;
 
 import io.github.david.auk.fluid.jdbc.annotations.ValidatedBody;
 import io.github.david.auk.fluid.jdbc.annotations.table.*;
-import io.github.david.auk.fluid.jdbc.components.daos.DAO;
+import io.github.david.auk.fluid.jdbc.annotations.table.constructor.TableConstructor;
+import io.github.david.auk.fluid.jdbc.annotations.table.field.ForeignKey;
+import io.github.david.auk.fluid.jdbc.annotations.table.field.PrimaryKey;
+import io.github.david.auk.fluid.jdbc.annotations.table.field.TableColumn;
+import io.github.david.auk.fluid.jdbc.components.daos.Dao;
 
+import java.lang.reflect.AccessibleObject;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.Arrays;
 
+import static io.github.david.auk.fluid.jdbc.components.tables.TableUtils.getPrimaryKeyMember;
+
 /**
- * Marker interface for classes that can be used with {@link DAO} and {@link ValidatedBody}.
+ * Marker interface for classes that can be used with {@link Dao} and {@link ValidatedBody}.
  * <p>
  * Classes should have a constructor annotated with {@link TableConstructor},
  * and use {@link TableName}, {@link PrimaryKey}, {@link TableColumn}, etc.
@@ -27,7 +34,7 @@ public interface TableEntity {
         }
 
         // Find the primary key: field-level preferred (ignoring duplicated record accessors)
-        Field pkField = getPkField(clazz);
+        AccessibleObject pkMember = getPrimaryKeyMember(clazz);
 
         // Ensure a constructor is annotated @TableConstructor
         boolean hasTc = Arrays.stream(clazz.getDeclaredConstructors())
@@ -37,10 +44,19 @@ public interface TableEntity {
                     " must have a constructor annotated @TableConstructor");
         }
 
-        // If PK is a field, ensure that field has @TableColumn
-        if (pkField != null && !pkField.isAnnotationPresent(TableColumn.class)) {
+        // If PK is a FIELD, ensure that field has @TableColumn.
+        // Method-based @PrimaryKey is supported and does not need @TableColumn on the method.
+        if (pkMember instanceof Field pkField && !pkField.isAnnotationPresent(TableColumn.class)) {
             throw new IllegalStateException("Primary key field " + pkField.getName() +
                     " in " + clazz.getName() + " must be annotated @TableColumn");
+        }
+
+        // If PK is method-based, ensure it returns a non-primitive type
+        if (pkMember instanceof Method pkMethod) {
+            if (pkMethod.getReturnType().isPrimitive()) {
+                throw new IllegalStateException("Primary key method " + pkMethod.getName() +
+                        " in " + clazz.getName() + " must not return a primitive type");
+            }
         }
 
         // Validate @ForeignKey usage: field type must implement TableEntity
@@ -62,40 +78,5 @@ public interface TableEntity {
                 }
             }
         }
-    }
-
-    private static Field getPkField(Class<?> clazz) {
-        Field pkField = null;
-        for (Field f : clazz.getDeclaredFields()) {
-            if (f.isAnnotationPresent(PrimaryKey.class)) {
-                if (pkField != null) {
-                    throw new IllegalStateException("Entity class " + clazz.getName() +
-                            " must have exactly one @PrimaryKey annotation on a field");
-                }
-                pkField = f;
-            }
-        }
-        Method pkMethod = null;
-        if (pkField == null) {
-            for (Method m : clazz.getDeclaredMethods()) {
-                if (m.isAnnotationPresent(PrimaryKey.class)) {
-                    if (pkMethod != null) {
-                        throw new IllegalStateException("Entity class " + clazz.getName() +
-                                " must have exactly one @PrimaryKey annotation on a method");
-                    }
-                    if (m.getParameterCount() != 0) {
-                        throw new IllegalStateException("Primary key method " +
-                                m.getName() + " in " + clazz.getName() +
-                                " must have no parameters");
-                    }
-                    pkMethod = m;
-                }
-            }
-            if (pkMethod == null) {
-                throw new IllegalStateException("Entity class " + clazz.getName() +
-                        " must have exactly one @PrimaryKey annotation");
-            }
-        }
-        return pkField;
     }
 }

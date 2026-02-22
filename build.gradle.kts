@@ -19,7 +19,12 @@ sourceSets {
 }
 
 group = "io.github.david-auk"
-version = "0.1.1"
+
+// derive version from environment / Git.
+// Git tag = source of truth
+version = System.getenv("VERSION")
+    ?: System.getenv("GITHUB_REF_NAME")
+            ?: "0.0.0-SNAPSHOT"
 
 java {
     toolchain { languageVersion.set(JavaLanguageVersion.of(21)) }
@@ -48,6 +53,21 @@ dependencies {
     implementation("com.fasterxml.jackson.core:jackson-databind:2.17.1")
     // (Optional) Jackson Annotations — sometimes required for features like @JsonProperty
     implementation("com.fasterxml.jackson.core:jackson-annotations:2.17.1")
+
+    testImplementation(platform("org.junit:junit-bom:5.10.2"))
+    testImplementation("org.junit.jupiter:junit-jupiter")
+
+    // Testcontainers core + JUnit 5 integration
+    testImplementation("org.testcontainers:testcontainers:1.19.8")
+    testImplementation("org.testcontainers:junit-jupiter:1.19.8")
+
+    // Database modules
+    testImplementation("org.testcontainers:postgresql:1.19.8")
+    testImplementation("org.testcontainers:mysql:1.19.8")
+
+    // JDBC drivers used by your code/tests
+    testRuntimeOnly("org.postgresql:postgresql:42.7.3")
+    testRuntimeOnly("com.mysql:mysql-connector-j:8.4.0")
 }
 
 tasks.test { useJUnitPlatform() }

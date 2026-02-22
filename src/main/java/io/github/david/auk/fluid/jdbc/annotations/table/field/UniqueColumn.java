@@ -1,11 +1,12 @@
-package io.github.david.auk.fluid.jdbc.annotations.table;
+package io.github.david.auk.fluid.jdbc.annotations.table.field;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
-@Target(ElementType.FIELD)
+// TODO Write JAVADOC
 @Retention(RetentionPolicy.RUNTIME)
-public @interface ForeignKey {
+@Target(ElementType.FIELD)
+public @interface UniqueColumn {
 }
