@@ -19,7 +19,12 @@ sourceSets {
 }
 
 group = "io.github.david-auk"
-version = "0.1.2"
+
+// derive version from environment / Git.
+// Git tag = source of truth
+version = System.getenv("VERSION")
+    ?: System.getenv("GITHUB_REF_NAME")
+            ?: "0.0.0-SNAPSHOT"
 
 java {
     toolchain { languageVersion.set(JavaLanguageVersion.of(21)) }
