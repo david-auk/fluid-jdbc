@@ -22,9 +22,12 @@ group = "io.github.david-auk"
 
 // derive version from environment / Git.
 // Git tag = source of truth
-version = System.getenv("VERSION")
+val rawVersion = System.getenv("VERSION")
     ?: System.getenv("GITHUB_REF_NAME")
-            ?: "0.0.0-SNAPSHOT"
+    ?: "0.0.0-SNAPSHOT"
+
+version = rawVersion.removePrefix("v.")
+    .removePrefix("v")
 
 java {
     toolchain { languageVersion.set(JavaLanguageVersion.of(21)) }

@@ -77,6 +77,12 @@ try (Dao<SimpleEntity, String> dao = DAOFactory.createDAO(SimpleEntity.class)) {
 
 `fluid-jdbc` ships with a small `Database` utility that resolves datasource settings **at call time** and then opens a new JDBC `Connection`.
 
+#### Supported Databases (Verified)
+
+ * Postgres ([16-alpine]() & latest (time of writing 25 feb))
+ * MySQL
+
+
 #### Resolution order (highest → lowest)
 
 When you call `Database.getConnection()` it resolves config in this precedence order:
