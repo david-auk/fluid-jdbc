@@ -257,7 +257,7 @@ Rules:
 
 `PK` = The [@PrimaryKey](#primarykey) class type
 
-Typical usage:
+#### Usage
 
 ```java
 try (Dao<EntityCrud, String> dao = DAOFactory.createDAO(EntityCrud.class)) {
@@ -287,12 +287,36 @@ try (Dao<EntityCrud, String> dao = DAOFactory.createDAO(EntityCrud.class)) {
 }
 ```
 
+#### Opening connections
+
 If created via `DAOFactory.createDAO(entityClass)`:
 - A new connection is opened
 - Closed automatically when the DAO is closed
 
+```java
+try (Dao<Entity, PK> dao = DAOFactory.createDAO(Entity.class)) 
+{ // Opens the connection
+    // Use Dao
+} // Closes the conncetion
+```
+
 If created via `DAOFactory.createDAO(connection, entityClass)`:
-- The provided connection is reused
+- The provided connection is reused (best practice for multi dao use)
+
+```java
+try (Connection connection = Database.connect()) 
+{ // Opens the connection
+    try (Dao<Entity, PK> dao1 = DAOFactory.createDAO(Entity.class))
+    { // Does not open a new connection
+        // Use dao1
+    } // Does not close a connection
+        
+    try (Dao<Entity2, PK2> dao2 = DAOFactory.createDAO(Entity.class))
+    { // Does not open a new connection
+        // Use dao2
+    } // Does not close a connection
+} // Closes the connection
+```
 
 ### DaoTransactional
 
