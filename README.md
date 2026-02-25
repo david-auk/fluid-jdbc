@@ -343,6 +343,8 @@ It is intentionally simple:
 - Uses reflection on entity fields
 - Delegates execution to the underlying `Dao`
 
+> **Note:** `QueryBuilder` takes a Java `Field`, but it resolves the SQL column name using the [@TableColumn](#tablecolumn) annotation (including `name = "..."` overrides).
+
 ### Basic usage
 
 ```java
@@ -360,6 +362,40 @@ This translates to a query equivalent to:
 SELECT * FROM query_test_table WHERE category = 'A';
 ```
 
+### End-to-end example (using the Quickstart entity)
+
+This uses the same `SimpleEntity` from the [Quickstart](#quickstart-minimal-example), so you can see querying without jumping to test entities.
+
+```java
+try (Dao<SimpleEntity, String> dao = DAOFactory.createDAO(SimpleEntity.class)) {
+
+    // Seed
+    dao.add(new SimpleEntity("1", "hello"));
+    dao.add(new SimpleEntity("2", "hello again"));
+    dao.add(new SimpleEntity("3", "world"));
+
+    // Query: find all rows where name starts with "hello"
+    List<SimpleEntity> hellos = new QueryBuilder<SimpleEntity, String>(dao)
+        .whereLike(SimpleEntity.class.getDeclaredField("name"), "hello%")
+        .orderBy(SimpleEntity.class.getDeclaredField("id"))
+        .asc()
+        .get();
+
+    // Example expectation: ["1", "2"]
+    System.out.println(hellos.stream().map(SimpleEntity::id).toList());
+}
+```
+
+Equivalent SQL (conceptually):
+
+```sql
+SELECT * FROM simple_entity
+WHERE name LIKE 'hello%'
+ORDER BY id ASC;
+```
+
+> Tip: wrap `getDeclaredField(...)` in a small try/catch if you prefer not to throw `NoSuchFieldException`.
+
 ---
 
 ### WHERE filters
@@ -368,7 +404,7 @@ SELECT * FROM query_test_table WHERE category = 'A';
 
 ```java
 new QueryBuilder<>(dao)
-    .where(field("category"), "A")
+    .where(EntityQuerying.class.getDeclaredField("category"), "A")
     .get();
 ```
 
@@ -382,7 +418,7 @@ WHERE category = 'A'
 
 ```java
 new QueryBuilder<>(dao)
-    .whereLike(field("name"), "alpha%")
+    .whereLike(EntityQuerying.class.getDeclaredField("name"), "alpha%")
     .get();
 ```
 
@@ -402,8 +438,8 @@ Filters are combined using `AND`.
 
 ```java
 new QueryBuilder<>(dao)
-    .where(field("category"), "A")
-    .and(field("enabled"), true)
+    .where(EntityQuerying.class.getDeclaredField("category"), "A")
+    .and(EntityQuerying.class.getDeclaredField("enabled"), true)
     .get();
 ```
 
@@ -420,14 +456,14 @@ WHERE category = 'A'
 
 ```java
 new QueryBuilder<>(dao)
-    .orderBy(field("valueInt"))
+    .orderBy(EntityQuerying.class.getDeclaredField("valueInt"))
     .asc()
     .get();
 ```
 
 ```java
 new QueryBuilder<>(dao)
-    .orderBy(field("valueInt"))
+    .orderBy(EntityQuerying.class.getDeclaredField("valueInt"))
     .desc()
     .get();
 ```
@@ -450,7 +486,7 @@ ORDER BY value_int DESC
 
 ```java
 EntityQuerying result = new QueryBuilder<>(dao)
-    .where(field("name"), "beta")
+    .where(EntityQuerying.class.getDeclaredField("name"), "beta")
     .getUnique();
 ```
 
@@ -459,26 +495,6 @@ Behavior:
 - Returns the entity if exactly one row matches
 - Returns `null` if no rows match
 - Throws `IllegalStateException` if multiple rows match
-
----
-
-### Reflection helper (recommended)
-
-Because `QueryBuilder` uses `Field`, most projects define a small helper:
-
-```java
-private static Field field(String name) {
-    try {
-        Field f = EntityQuerying.class.getDeclaredField(name);
-        f.setAccessible(true);
-        return f;
-    } catch (NoSuchFieldException e) {
-        throw new RuntimeException(e);
-    }
-}
-```
-
-This keeps query code readable and avoids repeating reflection boilerplate.
 
 ---
 
