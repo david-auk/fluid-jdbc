@@ -145,8 +145,6 @@ datasource.password=secret
 
 This is treated as the **lowest precedence** and is handy for local development defaults.
 
----
-
 ### Using `Database`
 
 Two entry points:
@@ -197,8 +195,6 @@ Defines the database table name.
 
 Required for every entity.
 
----
-
 ### `@PrimaryKey`
 
 Marks the primary key.
@@ -209,8 +205,6 @@ Can be:
 - On a **no-arg method** returning the PK value
 
 Only one primary key is allowed per entity.
-
----
 
 ### `@TableColumn`
 
@@ -225,15 +219,11 @@ Notes:
 - Optional `name` overrides column name
 - Must not be a primitive type (use `Integer`, `Long`, etc.)
 
----
-
 ### `@TableConstructor`
 
 Marks the constructor used when hydrating entities from the database.
 
 Exactly one required per entity.
-
----
 
 ### `@ForeignKey`
 
@@ -242,8 +232,6 @@ Marks a field as a foreign key.
 Requirements:
 - Field type must implement `TableEntity`
 - Column references the PK of the foreign table
-
----
 
 ### `@TableInherits`
 
@@ -273,22 +261,31 @@ Typical usage:
 
 ```java
 try (Dao<EntityCrud, String> dao = DAOFactory.createDAO(EntityCrud.class)) {
-    dao.add(entity);
-    dao.get(pk);
-    dao.update(entity);
-    dao.delete(pk);
+    // Create
+    dao.add(new EntityCrud("id-1", "first", 1));
+    
+    // Read
+    EntityCrud entity = dao.get("id-1");
+    
+    // Read all
+    List<EntityCrud> allEntities = dao.getAll();
+    
+    // Exists
+    boolean exists = dao.existsByPrimaryKey("id-1");
+    
+    // Update (same PK)
+    dao.update(new EntityCrud("id-1", "first", 42));
+    
+    // Update primary key (old -> new)
+    dao.update(
+        new EntityCrud("id-1", "first", 42),
+        new EntityCrud("id-2", "first", 42)
+    );
+    
+    // Delete
+    dao.delete("id-2");
 }
 ```
-
-Key operations:
-
-- `add(entity)`
-- `get(pk)`
-- `getAll()`
-- `existsByPrimaryKey(pk)`
-- `update(entity)`
-- `update(oldEntity, newEntity)` (updates PK)
-- `delete(pk)`
 
 If created via `DAOFactory.createDAO(entityClass)`:
 - A new connection is opened
@@ -296,8 +293,6 @@ If created via `DAOFactory.createDAO(entityClass)`:
 
 If created via `DAOFactory.createDAO(connection, entityClass)`:
 - The provided connection is reused
-
----
 
 ### DaoTransactional
 
@@ -396,8 +391,6 @@ ORDER BY id ASC;
 
 > Tip: wrap `getDeclaredField(...)` in a small try/catch if you prefer not to throw `NoSuchFieldException`.
 
----
-
 ### WHERE filters
 
 #### Equality
@@ -430,8 +423,6 @@ WHERE name LIKE 'alpha%'
 
 You are responsible for supplying `%` where needed.
 
----
-
 ### Combining filters
 
 Filters are combined using `AND`.
@@ -449,8 +440,6 @@ Equivalent SQL:
 WHERE category = 'A'
   AND enabled = true
 ```
-
----
 
 ### Ordering
 
@@ -480,8 +469,6 @@ or
 ORDER BY value_int DESC
 ```
 
----
-
 ### Fetching a single result
 
 ```java
@@ -495,8 +482,6 @@ Behavior:
 - Returns the entity if exactly one row matches
 - Returns `null` if no rows match
 - Throws `IllegalStateException` if multiple rows match
-
----
 
 ### Design goals
 
@@ -515,41 +500,9 @@ This keeps it:
 
 ---
 
-# Advanced examples (CRUD, FK, inheritance)
+# Advanced examples (FK, inheritance)
 
 > The following sections demonstrate full usage patterns with richer entities.
-
-## CRUD API basics
-
-The generic DAO supports typical CRUD flows:
-
-```java
-try (Dao<EntityCrud, String> dao = DAOFactory.createDAO(EntityCrud.class)) {
-    // Create
-    dao.add(new EntityCrud("id-1", "first", 1));
-
-    // Read
-    EntityCrud entity = dao.get("id-1");
-
-    // Read all
-    List<EntityCrud> allEntities = dao.getAll();
-
-    // Exists
-    boolean exists = dao.existsByPrimaryKey("id-1");
-
-    // Update (same PK)
-    dao.update(new EntityCrud("id-1", "first", 42));
-
-    // Update primary key (old -> new)
-    dao.update(
-        new EntityCrud("id-1", "first", 42),
-        new EntityCrud("id-2", "first", 42)
-    );
-
-    // Delete
-    dao.delete("id-2");
-}
-```
 
 ## Foreign keys
 
