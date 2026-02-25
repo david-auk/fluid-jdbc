@@ -79,8 +79,8 @@ try (Dao<SimpleEntity, String> dao = DAOFactory.createDAO(SimpleEntity.class)) {
 
 #### Supported Databases (Verified)
 
- * Postgres ([16-alpine]() & latest (time of writing 25 feb))
- * MySQL
+ * Postgres ([18.2-trixie](https://hub.docker.com/layers/library/postgres/18.2-trixie/images/sha256-f1d573a3ea5c549cf7c854732fe76c52f12ecfca02906f62cceba4552792ca7f) & latest (time of writing 25 feb))
+ * MySQL ([8.4](https://hub.docker.com/layers/library/mysql/8.4/images/sha256-e193c837211ee976fd9b638740a0264eff9b1d602d3affed7938ddbde7ff3035) & lts (time of writing 25 feb))
 
 
 #### Resolution order (highest → lowest)
