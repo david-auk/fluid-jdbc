@@ -334,6 +334,171 @@ Characteristics:
 
 ---
 
+## Querying with QueryBuilder
+
+In addition to CRUD operations, `fluid-jdbc` provides a lightweight `QueryBuilder` for filtering and sorting results.
+
+It is intentionally simple:
+- No DSL or generated code
+- Uses reflection on entity fields
+- Delegates execution to the underlying `Dao`
+
+### Basic usage
+
+```java
+try (Dao<EntityQuerying, String> dao = DAOFactory.createDAO(EntityQuerying.class)) {
+
+    List<EntityQuerying> results = new QueryBuilder<>(dao)
+        .where(EntityQuerying.class.getDeclaredField("category"), "A")
+        .get();
+}
+```
+
+This translates to a query equivalent to:
+
+```sql
+SELECT * FROM query_test_table WHERE category = 'A';
+```
+
+---
+
+### WHERE filters
+
+#### Equality
+
+```java
+new QueryBuilder<>(dao)
+    .where(field("category"), "A")
+    .get();
+```
+
+Equivalent SQL:
+
+```sql
+WHERE category = 'A'
+```
+
+#### LIKE
+
+```java
+new QueryBuilder<>(dao)
+    .whereLike(field("name"), "alpha%")
+    .get();
+```
+
+Equivalent SQL:
+
+```sql
+WHERE name LIKE 'alpha%'
+```
+
+You are responsible for supplying `%` where needed.
+
+---
+
+### Combining filters
+
+Filters are combined using `AND`.
+
+```java
+new QueryBuilder<>(dao)
+    .where(field("category"), "A")
+    .and(field("enabled"), true)
+    .get();
+```
+
+Equivalent SQL:
+
+```sql
+WHERE category = 'A'
+  AND enabled = true
+```
+
+---
+
+### Ordering
+
+```java
+new QueryBuilder<>(dao)
+    .orderBy(field("valueInt"))
+    .asc()
+    .get();
+```
+
+```java
+new QueryBuilder<>(dao)
+    .orderBy(field("valueInt"))
+    .desc()
+    .get();
+```
+
+Equivalent SQL:
+
+```sql
+ORDER BY value_int ASC
+```
+
+or
+
+```sql
+ORDER BY value_int DESC
+```
+
+---
+
+### Fetching a single result
+
+```java
+EntityQuerying result = new QueryBuilder<>(dao)
+    .where(field("name"), "beta")
+    .getUnique();
+```
+
+Behavior:
+
+- Returns the entity if exactly one row matches
+- Returns `null` if no rows match
+- Throws `IllegalStateException` if multiple rows match
+
+---
+
+### Reflection helper (recommended)
+
+Because `QueryBuilder` uses `Field`, most projects define a small helper:
+
+```java
+private static Field field(String name) {
+    try {
+        Field f = EntityQuerying.class.getDeclaredField(name);
+        f.setAccessible(true);
+        return f;
+    } catch (NoSuchFieldException e) {
+        throw new RuntimeException(e);
+    }
+}
+```
+
+This keeps query code readable and avoids repeating reflection boilerplate.
+
+---
+
+### Design goals
+
+The QueryBuilder is deliberately minimal and predictable:
+
+- No runtime proxies
+- No expression trees
+- No magic method parsing
+- Just reflection + JDBC
+
+This keeps it:
+
+- debuggable
+- transparent
+- easy to extend later (e.g. OR, BETWEEN, LIMIT)
+
+---
+
 # Advanced examples (CRUD, FK, inheritance)
 
 > The following sections demonstrate full usage patterns with richer entities.
