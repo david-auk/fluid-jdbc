@@ -5,6 +5,7 @@ import io.github.david.auk.fluid.jdbc.dbtests.contracts.ContractInterface;
 import io.github.david.auk.fluid.jdbc.dbtests.contracts.crud.ContractCrud;
 import io.github.david.auk.fluid.jdbc.dbtests.contracts.foreignkey.ContractForeignKey;
 import io.github.david.auk.fluid.jdbc.dbtests.contracts.inheritance.ContractInheritance;
+import io.github.david.auk.fluid.jdbc.dbtests.contracts.querying.ContractQuerying;
 import org.junit.jupiter.api.*;
 import org.testcontainers.containers.JdbcDatabaseContainer;
 import org.testcontainers.junit.jupiter.Testcontainers;
@@ -15,7 +16,7 @@ import java.sql.Statement;
 
 @Testcontainers
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-public abstract class AbstractJdbcContainerTest implements ContractCrud, ContractForeignKey, ContractInheritance {
+public abstract class AbstractJdbcContainerTest implements ContractCrud, ContractForeignKey, ContractInheritance, ContractQuerying {
 
     private JdbcDatabaseContainer<?> container;
 
@@ -47,6 +48,9 @@ public abstract class AbstractJdbcContainerTest implements ContractCrud, Contrac
                 // CRUD
                 "DROP TABLE IF EXISTS crud_test_table",
 
+                // Querying
+                "DROP TABLE IF EXISTS query_test_table",
+
                 // Inheritance (placeholder)
                 "DROP TABLE IF EXISTS inherit_child", "DROP TABLE IF EXISTS inherit_base"};
     }
@@ -63,6 +67,17 @@ public abstract class AbstractJdbcContainerTest implements ContractCrud, Contrac
                     id VARCHAR(36) PRIMARY KEY,
                     name VARCHAR(255) NOT NULL,
                     value_int INTEGER NOT NULL
+                )
+                """,
+
+                // Querying
+                """
+                CREATE TABLE query_test_table (
+                    id VARCHAR(36) PRIMARY KEY,
+                    name VARCHAR(255) NOT NULL,
+                    category VARCHAR(255) NOT NULL,
+                    value_int INTEGER NOT NULL,
+                    enabled BOOLEAN NOT NULL
                 )
                 """,
 
