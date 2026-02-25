@@ -197,8 +197,6 @@ Defines the database table name.
 
 Required for every entity.
 
----
-
 ### `@PrimaryKey`
 
 Marks the primary key.
@@ -209,8 +207,6 @@ Can be:
 - On a **no-arg method** returning the PK value
 
 Only one primary key is allowed per entity.
-
----
 
 ### `@TableColumn`
 
@@ -225,15 +221,11 @@ Notes:
 - Optional `name` overrides column name
 - Must not be a primitive type (use `Integer`, `Long`, etc.)
 
----
-
 ### `@TableConstructor`
 
 Marks the constructor used when hydrating entities from the database.
 
 Exactly one required per entity.
-
----
 
 ### `@ForeignKey`
 
@@ -242,8 +234,6 @@ Marks a field as a foreign key.
 Requirements:
 - Field type must implement `TableEntity`
 - Column references the PK of the foreign table
-
----
 
 ### `@TableInherits`
 
@@ -296,8 +286,6 @@ If created via `DAOFactory.createDAO(entityClass)`:
 
 If created via `DAOFactory.createDAO(connection, entityClass)`:
 - The provided connection is reused
-
----
 
 ### DaoTransactional
 
@@ -396,8 +384,6 @@ ORDER BY id ASC;
 
 > Tip: wrap `getDeclaredField(...)` in a small try/catch if you prefer not to throw `NoSuchFieldException`.
 
----
-
 ### WHERE filters
 
 #### Equality
@@ -430,8 +416,6 @@ WHERE name LIKE 'alpha%'
 
 You are responsible for supplying `%` where needed.
 
----
-
 ### Combining filters
 
 Filters are combined using `AND`.
@@ -449,8 +433,6 @@ Equivalent SQL:
 WHERE category = 'A'
   AND enabled = true
 ```
-
----
 
 ### Ordering
 
@@ -480,8 +462,6 @@ or
 ORDER BY value_int DESC
 ```
 
----
-
 ### Fetching a single result
 
 ```java
@@ -495,8 +475,6 @@ Behavior:
 - Returns the entity if exactly one row matches
 - Returns `null` if no rows match
 - Throws `IllegalStateException` if multiple rows match
-
----
 
 ### Design goals
 
