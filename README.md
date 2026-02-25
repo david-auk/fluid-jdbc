@@ -145,8 +145,6 @@ datasource.password=secret
 
 This is treated as the **lowest precedence** and is handy for local development defaults.
 
----
-
 ### Using `Database`
 
 Two entry points:
