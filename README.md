@@ -261,22 +261,31 @@ Typical usage:
 
 ```java
 try (Dao<EntityCrud, String> dao = DAOFactory.createDAO(EntityCrud.class)) {
-    dao.add(entity);
-    dao.get(pk);
-    dao.update(entity);
-    dao.delete(pk);
+    // Create
+    dao.add(new EntityCrud("id-1", "first", 1));
+    
+    // Read
+    EntityCrud entity = dao.get("id-1");
+    
+    // Read all
+    List<EntityCrud> allEntities = dao.getAll();
+    
+    // Exists
+    boolean exists = dao.existsByPrimaryKey("id-1");
+    
+    // Update (same PK)
+    dao.update(new EntityCrud("id-1", "first", 42));
+    
+    // Update primary key (old -> new)
+    dao.update(
+        new EntityCrud("id-1", "first", 42),
+        new EntityCrud("id-2", "first", 42)
+    );
+    
+    // Delete
+    dao.delete("id-2");
 }
 ```
-
-Key operations:
-
-- `add(entity)`
-- `get(pk)`
-- `getAll()`
-- `existsByPrimaryKey(pk)`
-- `update(entity)`
-- `update(oldEntity, newEntity)` (updates PK)
-- `delete(pk)`
 
 If created via `DAOFactory.createDAO(entityClass)`:
 - A new connection is opened
@@ -491,41 +500,9 @@ This keeps it:
 
 ---
 
-# Advanced examples (CRUD, FK, inheritance)
+# Advanced examples (FK, inheritance)
 
 > The following sections demonstrate full usage patterns with richer entities.
-
-## CRUD API basics
-
-The generic DAO supports typical CRUD flows:
-
-```java
-try (Dao<EntityCrud, String> dao = DAOFactory.createDAO(EntityCrud.class)) {
-    // Create
-    dao.add(new EntityCrud("id-1", "first", 1));
-
-    // Read
-    EntityCrud entity = dao.get("id-1");
-
-    // Read all
-    List<EntityCrud> allEntities = dao.getAll();
-
-    // Exists
-    boolean exists = dao.existsByPrimaryKey("id-1");
-
-    // Update (same PK)
-    dao.update(new EntityCrud("id-1", "first", 42));
-
-    // Update primary key (old -> new)
-    dao.update(
-        new EntityCrud("id-1", "first", 42),
-        new EntityCrud("id-2", "first", 42)
-    );
-
-    // Delete
-    dao.delete("id-2");
-}
-```
 
 ## Foreign keys
 
