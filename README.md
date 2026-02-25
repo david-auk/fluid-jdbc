@@ -15,7 +15,7 @@
 
 ```kotlin
 repositories { mavenCentral() }
-dependencies { implementation("io.github.david-auk:fluid-jdbc:0.1.0") }
+dependencies { implementation("io.github.david-auk:fluid-jdbc:0.1.1") }
 ```
 
 ## Quickstart (minimal example)
