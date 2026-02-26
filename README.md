@@ -63,6 +63,11 @@ public record SimpleEntity(
 }
 ```
 
+> Tip: Validate your entity to see if your Entity is correctly annotated using:
+> ```java
+> TableEntity.validateEntity(YourEntity);
+> ```
+
 ### 3) Use a DAO
 
 More info about how to use a `Dao` [Here](#dao)
