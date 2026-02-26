@@ -1,5 +1,9 @@
 # fluid-jdbc
 
+[![GitHub Workflow Status - CI](https://img.shields.io/github/actions/workflow/status/david-auk/fluid-jdbc/release.yml?logo=github&label=CI)](https://github.com/david-auk/fluid-jdbc/actions/workflows/release.yml)
+[![Maven Central](https://img.shields.io/maven-central/v/io.github.david-auk/fluid-jdbc?logo=apachemaven&label=Maven%20Central)](https://central.sonatype.com/artifact/io.github.david-auk/fluid-jdbc)
+[![License](https://img.shields.io/github/license/david-auk/fluid-jdbc?logo=apache&label=license)](https://github.com/david-auk/fluid-jdbc/blob/main/LICENSE)
+
 `fluid-jdbc` is a small Java/JDBC helper that lets you:
 
 - Map Java classes/records to database tables using annotations.
