@@ -1,7 +1,5 @@
 # fluid-jdbc
 
-[![Tests (pinned DB versions)](https://img.shields.io/github/actions/workflow/status/david-auk/fluid-jdbc/tests-pinned.yml?branch=main&logo=github&label=tests%20(pinned%20DB%20versions))](https://github.com/david-auk/fluid-jdbc/actions/workflows/tests-pinned.yml)
-[![Tests (latest DB versions)](https://img.shields.io/github/actions/workflow/status/david-auk/fluid-jdbc/tests-latest.yml?branch=main&logo=github&label=tests%20(latest%20DB%20versions))](https://github.com/david-auk/fluid-jdbc/actions/workflows/tests-latest.yml)
 [![Maven Central](https://img.shields.io/maven-central/v/io.github.david-auk/fluid-jdbc?logo=apachemaven&label=Maven%20Central)](https://central.sonatype.com/artifact/io.github.david-auk/fluid-jdbc)
 [![License](https://img.shields.io/github/license/david-auk/fluid-jdbc?logo=apache&label=license)](https://github.com/david-auk/fluid-jdbc/blob/main/LICENSE)
 
@@ -63,6 +61,11 @@ public record SimpleEntity(
 }
 ```
 
+> Tip: Validate your entity to see if your Entity is correctly annotated using:
+> ```java
+> TableEntity.validateEntity(YourEntity);
+> ```
+
 ### 3) Use a DAO
 
 More info about how to use a `Dao` [Here](#dao)
@@ -84,9 +87,16 @@ try (Dao<SimpleEntity, String> dao = DAOFactory.createDAO(SimpleEntity.class)) {
 
 #### Supported Databases (Verified)
 
- * Postgres ([18.2-trixie](https://hub.docker.com/layers/library/postgres/18.2-trixie/images/sha256-f1d573a3ea5c549cf7c854732fe76c52f12ecfca02906f62cceba4552792ca7f) & latest (time of writing 25 feb))
- * MySQL ([8.4](https://hub.docker.com/layers/library/mysql/8.4/images/sha256-e193c837211ee976fd9b638740a0264eff9b1d602d3affed7938ddbde7ff3035) & lts (time of writing 25 feb))
+[![Tests (pinned DB versions)](https://img.shields.io/github/actions/workflow/status/david-auk/fluid-jdbc/tests-pinned.yml?branch=main&logo=github&label=Tests%20(pinned%20DB%20versions))](https://github.com/david-auk/fluid-jdbc/actions/workflows/tests-pinned.yml)
+[![Tests (latest DB versions)](https://img.shields.io/github/actions/workflow/status/david-auk/fluid-jdbc/tests-latest.yml?branch=main&logo=github&label=Tests%20(latest%20DB%20versions))](https://github.com/david-auk/fluid-jdbc/actions/workflows/tests-latest.yml)
 
+* Postgres ([pinned](./src/test/resources/image-versions/postgres/) & [latest](./src/test/resources/image-versions/postgres/latest.txt))
+* MySQL ([pinned](./src/test/resources/image-versions/mysql/pinned.txt) & [latest](./src/test/resources/image-versions/mysql/pinned.txt))
+
+#### Time of verification
+
+[![Last successful (pinned)](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fapi.github.com%2Frepos%2Fdavid-auk%2Ffluid-jdbc%2Factions%2Fworkflows%2Ftests-pinned.yml%2Fruns%3Fbranch%3Dmain%26status%3Dsuccess%26per_page%3D1&query=%24.workflow_runs%5B0%5D.updated_at&label=Pinned)](https://github.com/david-auk/fluid-jdbc/actions/workflows/tests-pinned.yml?query=branch%3Amain)
+[![Last successful (latest)](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fapi.github.com%2Frepos%2Fdavid-auk%2Ffluid-jdbc%2Factions%2Fworkflows%2Ftests-latest.yml%2Fruns%3Fbranch%3Dmain%26status%3Dsuccess%26per_page%3D1&query=%24.workflow_runs%5B0%5D.updated_at&label=Latest)](https://github.com/david-auk/fluid-jdbc/actions/workflows/tests-latest.yml?query=branch%3Amain)
 
 #### Resolution order (highest → lowest)
 
