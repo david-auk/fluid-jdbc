@@ -1,5 +1,7 @@
 # fluid-jdbc
 
+[![Tests (pinned DB versions)](https://img.shields.io/github/actions/workflow/status/david-auk/fluid-jdbc/tests-pinned.yml?branch=main&logo=github&label=Tests%20(pinned%20DB%20versions))](https://github.com/david-auk/fluid-jdbc/actions/workflows/tests-pinned.yml)
+[![Tests (latest DB versions)](https://img.shields.io/github/actions/workflow/status/david-auk/fluid-jdbc/tests-latest.yml?branch=main&logo=github&label=Tests%20(latest%20DB%20versions))](https://github.com/david-auk/fluid-jdbc/actions/workflows/tests-latest.yml)
 [![Maven Central](https://img.shields.io/maven-central/v/io.github.david-auk/fluid-jdbc?logo=apachemaven&label=Maven%20Central)](https://central.sonatype.com/artifact/io.github.david-auk/fluid-jdbc)
 [![License](https://img.shields.io/github/license/david-auk/fluid-jdbc?logo=apache&label=license)](https://github.com/david-auk/fluid-jdbc/blob/main/LICENSE)
 
@@ -85,18 +87,12 @@ try (Dao<SimpleEntity, String> dao = DAOFactory.createDAO(SimpleEntity.class)) {
 
 `fluid-jdbc` ships with a small `Database` utility that resolves datasource settings **at call time** and then opens a new JDBC `Connection`.
 
-#### Supported Databases (Verified)
-
-[![Tests (pinned DB versions)](https://img.shields.io/github/actions/workflow/status/david-auk/fluid-jdbc/tests-pinned.yml?branch=main&logo=github&label=Tests%20(pinned%20DB%20versions))](https://github.com/david-auk/fluid-jdbc/actions/workflows/tests-pinned.yml)
-[![Tests (latest DB versions)](https://img.shields.io/github/actions/workflow/status/david-auk/fluid-jdbc/tests-latest.yml?branch=main&logo=github&label=Tests%20(latest%20DB%20versions))](https://github.com/david-auk/fluid-jdbc/actions/workflows/tests-latest.yml)
+#### Tested Databases
 
 * Postgres ([pinned](./src/test/resources/image-versions/postgres/pinned.txt) & [latest](./src/test/resources/image-versions/postgres/latest.txt))
 * MySQL ([pinned](./src/test/resources/image-versions/mysql/pinned.txt) & [latest](./src/test/resources/image-versions/mysql/latest.txt))
 
-#### Time of verification
-
-[![Last successful (pinned)](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fapi.github.com%2Frepos%2Fdavid-auk%2Ffluid-jdbc%2Factions%2Fworkflows%2Ftests-pinned.yml%2Fruns%3Fbranch%3Dmain%26status%3Dsuccess%26per_page%3D1&query=%24.workflow_runs%5B0%5D.updated_at&label=Pinned)](https://github.com/david-auk/fluid-jdbc/actions/workflows/tests-pinned.yml?query=branch%3Amain)
-[![Last successful (latest)](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fapi.github.com%2Frepos%2Fdavid-auk%2Ffluid-jdbc%2Factions%2Fworkflows%2Ftests-latest.yml%2Fruns%3Fbranch%3Dmain%26status%3Dsuccess%26per_page%3D1&query=%24.workflow_runs%5B0%5D.updated_at&label=Latest)](https://github.com/david-auk/fluid-jdbc/actions/workflows/tests-latest.yml?query=branch%3Amain)
+ > These are the container versions unit tests are preformed [Status of tests](https://github.com/david-auk/fluid-jdbc/actions) 
 
 #### Resolution order (highest → lowest)
 
