@@ -13,7 +13,7 @@ class PostgresPinnedContainerTest extends AbstractJdbcContainerTest {
         return new ContainerSpec(
                 "postgres:pinned",
                 () -> {
-                    String image = loadTrimmedResource("/postgres-pinned-image.txt");
+                    String image = loadTrimmedResource("/image-versions/postgres/pinned.txt");
                     return new PostgreSQLContainer<>(image)
                             .withDatabaseName("testdb")
                             .withUsername("test")

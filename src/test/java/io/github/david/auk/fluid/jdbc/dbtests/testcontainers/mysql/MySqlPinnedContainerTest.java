@@ -13,7 +13,7 @@ class MySqlPinnedContainerTest extends AbstractJdbcContainerTest {
         return new ContainerSpec(
                 "mysql:pinned",
                 () -> {
-                    String image = loadTrimmedResource("/mysql-pinned-image.txt");
+                    String image = loadTrimmedResource("/image-versions/mysql/pinned.txt");
                     return new MySQLContainer<>(image)
                             .withDatabaseName("testdb")
                             .withUsername("test")
