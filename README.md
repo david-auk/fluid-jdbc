@@ -90,8 +90,8 @@ try (Dao<SimpleEntity, String> dao = DAOFactory.createDAO(SimpleEntity.class)) {
 [![Tests (pinned DB versions)](https://img.shields.io/github/actions/workflow/status/david-auk/fluid-jdbc/tests-pinned.yml?branch=main&logo=github&label=Tests%20(pinned%20DB%20versions))](https://github.com/david-auk/fluid-jdbc/actions/workflows/tests-pinned.yml)
 [![Tests (latest DB versions)](https://img.shields.io/github/actions/workflow/status/david-auk/fluid-jdbc/tests-latest.yml?branch=main&logo=github&label=Tests%20(latest%20DB%20versions))](https://github.com/david-auk/fluid-jdbc/actions/workflows/tests-latest.yml)
 
-* Postgres ([pinned](./src/test/resources/image-versions/postgres/) & [latest](./src/test/resources/image-versions/postgres/latest.txt))
-* MySQL ([pinned](./src/test/resources/image-versions/mysql/pinned.txt) & [latest](./src/test/resources/image-versions/mysql/pinned.txt))
+* Postgres ([pinned](./src/test/resources/image-versions/postgres/pinned.txt) & [latest](./src/test/resources/image-versions/postgres/latest.txt))
+* MySQL ([pinned](./src/test/resources/image-versions/mysql/pinned.txt) & [latest](./src/test/resources/image-versions/mysql/latest.txt))
 
 #### Time of verification
 
