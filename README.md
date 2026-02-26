@@ -1,7 +1,7 @@
 # fluid-jdbc
 
-[![Tests (pinned DB versions)](https://img.shields.io/github/actions/workflow/status/david-auk/fluid-jdbc/tests-pinned.yml?branch=main&logo=github&label=Tests%20(pinned%20DB%20versions))](https://github.com/david-auk/fluid-jdbc/actions/workflows/tests-pinned.yml)
-[![Tests (latest DB versions)](https://img.shields.io/github/actions/workflow/status/david-auk/fluid-jdbc/tests-latest.yml?branch=main&logo=github&label=Tests%20(latest%20DB%20versions))](https://github.com/david-auk/fluid-jdbc/actions/workflows/tests-latest.yml)
+[![Tests (pinned DB versions)](https://img.shields.io/github/actions/workflow/status/david-auk/fluid-jdbc/tests-pinned.yml?branch=main&logo=github&label=Tests%20(pinned%20DB%20versions))](https://github.com/david-auk/fluid-jdbc/actions/workflows/tests-pinned.yml?query=branch%3Amain)
+[![Tests (latest DB versions)](https://img.shields.io/github/actions/workflow/status/david-auk/fluid-jdbc/tests-latest.yml?branch=main&logo=github&label=Tests%20(latest%20DB%20versions))](https://github.com/david-auk/fluid-jdbc/actions/workflows/tests-latest.yml?query=branch%3Amain)
 [![Maven Central](https://img.shields.io/maven-central/v/io.github.david-auk/fluid-jdbc?logo=apachemaven&label=Maven%20Central)](https://central.sonatype.com/artifact/io.github.david-auk/fluid-jdbc)
 [![License](https://img.shields.io/github/license/david-auk/fluid-jdbc?logo=apache&label=license)](https://github.com/david-auk/fluid-jdbc/blob/main/LICENSE)
 
