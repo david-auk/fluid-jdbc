@@ -1,26 +1,25 @@
 ---
-name: Issue template
-about: To provide a default structured way of a issue
+name: User story
+about: To provide a default structured way of an issue
 title: ''
 labels: ''
-assignees: david-auk
-
+assignees: ''
 ---
 
 ## User story
-Als **_role_** wil ik graag **_deze feature_**, zodat we **_deze waarde leveren_**
+As a **_role_**, I want **_this feature_**, so that we **_deliver this value_**
 
 ## Context
-_Beschrijf hier kort de context van de user story. Denk aan een uitleg van de huidige situatie of wat de aanleiding is van deze aanvraag. Je kunt hier bijvoorbeeld ook kwijt of er mogelijk ook grenzen of kaders zijn waarbinnen de functie geleverd moet worden_
+_Describe the context of the user story here. Think of an explanation of the current situation or what triggered this request. You can also mention any boundaries or constraints within which the feature must be delivered._
 
 ## Contact
-_Vermeld wie de contact persoon is voor deze userstory_
+_Specify who the contact person is for this user story._
 
 ## Definition of Done
-_Beschrijf zo veel mogelijk concrete punten die verwacht worden in de oplevering van de functie_
+_Describe as many concrete points as possible that are expected upon delivery of the feature._
 
-_Suggesties_
-- [ ] De feature is operationeel
-- [ ] Gebruikers zijn op de hoogte
-- [ ] Configuratie is beschikbaar
-- [ ] Documentatie
+_Suggestions_
+- [ ] The feature is operational
+- [ ] Users have been informed
+- [ ] Configuration is available
+- [ ] Documentation
