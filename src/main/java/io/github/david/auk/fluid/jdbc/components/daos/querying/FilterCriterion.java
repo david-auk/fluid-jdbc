@@ -5,5 +5,5 @@ import java.lang.reflect.Field;
 /**
  * A single filter condition: “field [=|LIKE] value”.
  */
-public record FilterCriterion<T>(Field field, T value, boolean wildcard) {
+public record FilterCriterion<T>(Field field, Operator operator, T value) {
 }

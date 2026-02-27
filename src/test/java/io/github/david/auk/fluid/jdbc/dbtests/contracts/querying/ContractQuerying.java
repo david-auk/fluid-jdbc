@@ -126,7 +126,7 @@ public interface ContractQuerying extends ContractInterface {
             populate(dao);
 
             List<EntityQuerying> results = new QueryBuilder<>(dao)
-                    .where(field("category"), "A")
+                    .where(field("category"), "=", "A")
                     .get();
 
             assertEquals(3, results.size(), "category A should return 3 rows from the default dataset");
@@ -140,7 +140,7 @@ public interface ContractQuerying extends ContractInterface {
             populate(dao);
 
             List<EntityQuerying> results = new QueryBuilder<>(dao)
-                    .where(field("enabled"), true)
+                    .where(field("enabled"), "=", true)
                     .get();
 
             assertEquals(5, results.size(), "enabled=true should return 5 rows from the default dataset");
@@ -155,7 +155,7 @@ public interface ContractQuerying extends ContractInterface {
 
             // Expect: alpha, alpha-2, alphabet
             List<EntityQuerying> results = new QueryBuilder<>(dao)
-                    .whereLike(field("name"), "alpha%")
+                    .where(field("name"), "LIKE", "alpha%")
                     .get();
 
             assertEquals(3, results.size(), "alpha% should match alpha, alpha-2, alphabet");
@@ -169,7 +169,7 @@ public interface ContractQuerying extends ContractInterface {
             populate(dao);
 
             List<EntityQuerying> results = new QueryBuilder<>(dao)
-                    .whereLike(field("name"), "%max%")
+                    .where(field("name"), "LIKE", "%max%")
                     .get();
 
             assertEquals(1, results.size(), "%max% should match exactly one row in the default dataset");
@@ -184,8 +184,8 @@ public interface ContractQuerying extends ContractInterface {
 
             // In dataset: category A has alpha(true), alpha-2(false), alphabet(true)
             List<EntityQuerying> results = new QueryBuilder<>(dao)
-                    .where(field("category"), "A")
-                    .and(field("enabled"), true)
+                    .where(field("category"), "=", "A")
+                    .and(field("enabled"), "=", true)
                     .get();
 
             assertEquals(2, results.size(), "category A AND enabled=true should return 2 rows");
@@ -239,7 +239,7 @@ public interface ContractQuerying extends ContractInterface {
             populate(dao);
 
             EntityQuerying result = new QueryBuilder<>(dao)
-                    .where(field("category"), "__does_not_exist__")
+                    .where(field("category"), "=", "__does_not_exist__")
                     .getUnique();
 
             assertNull(result, "getUnique should return null when there are no results");
@@ -252,7 +252,7 @@ public interface ContractQuerying extends ContractInterface {
             populate(dao);
 
             EntityQuerying result = new QueryBuilder<>(dao)
-                    .where(field("name"), "beta")
+                    .where(field("name"), "=", "beta")
                     .getUnique();
 
             assertNotNull(result, "getUnique should return the entity when exactly one result exists");
@@ -267,7 +267,7 @@ public interface ContractQuerying extends ContractInterface {
 
             IllegalStateException ex = assertThrows(IllegalStateException.class, () ->
                     new QueryBuilder<>(dao)
-                            .where(field("category"), "A")
+                            .where(field("category"), "=", "A")
                             .getUnique()
             );
 

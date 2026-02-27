@@ -498,7 +498,9 @@ public class Table<T extends TableEntity, K> {
 
         sql.append(first ? " WHERE " : " AND ")
                 .append(col)
-                .append(criterion.wildcard() ? " LIKE ?" : " = ?");
+                .append(" ")
+                .append(criterion.operator())
+                .append(" ?");
 
         return true;
     }

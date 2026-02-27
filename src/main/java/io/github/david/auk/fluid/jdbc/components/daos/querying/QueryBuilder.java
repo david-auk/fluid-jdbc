@@ -22,31 +22,16 @@ public class QueryBuilder<T extends TableEntity, K> {
     /**
      * Add an “= value” filter.
      */
-    public <D> QueryBuilder<T, K> where(Field field, D value) {
-        filters.add(new FilterCriterion<>(field, value, false));
-        return this;
-    }
-
-    /**
-     * Add a “LIKE value” filter.
-     */
-    public <D> QueryBuilder<T, K> whereLike(Field field, D value) {
-        filters.add(new FilterCriterion<>(field, value, true));
+    public <D> QueryBuilder<T, K> where(Field field, String operator, D value) {
+        filters.add(new FilterCriterion<>(field, Operator.fromString(operator), value));
         return this;
     }
 
     /**
      * Alias for where(...).
      */
-    public <D> QueryBuilder<T, K> and(Field field, D value) {
-        return where(field, value);
-    }
-
-    /**
-     * Alias for whereLike(...).
-     */
-    public <D> QueryBuilder<T, K> andLike(Field field, D value) {
-        return whereLike(field, value);
+    public <D> QueryBuilder<T, K> and(Field field, String operator, D value) {
+        return where(field, operator, value);
     }
 
     /**

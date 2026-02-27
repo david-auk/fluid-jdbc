@@ -3,6 +3,7 @@ package io.github.david.auk.fluid.jdbc.components.daos;
 import io.github.david.auk.fluid.jdbc.annotations.table.field.UniqueColumn;
 import io.github.david.auk.fluid.jdbc.components.Database;
 import io.github.david.auk.fluid.jdbc.components.daos.querying.FilterCriterion;
+import io.github.david.auk.fluid.jdbc.components.daos.querying.Operator;
 import io.github.david.auk.fluid.jdbc.components.daos.querying.QueryBuilder;
 import io.github.david.auk.fluid.jdbc.components.tables.Table;
 import io.github.david.auk.fluid.jdbc.components.tables.TableEntity;
@@ -255,9 +256,9 @@ public class Dao<TE extends TableEntity, PK> implements AutoCloseable {
      * @param isData     The data you want to match
      * @return Entities from query
      */
-    public <D> List<TE> get(Field whereField, D isData) {
+    public <D> List<TE> get(Field whereField, String operator, D isData) {
         return new QueryBuilder<>(this)
-                .where(whereField, isData)
+                .where(whereField, operator, isData)
                 .get();
     }
 
@@ -271,11 +272,11 @@ public class Dao<TE extends TableEntity, PK> implements AutoCloseable {
      * @throws RuntimeException if the field is not annotated with @UniqueColumn
      * @throws IllegalStateException if multiple results are found
      */
-    public <D> TE getUnique(Field uniqueField, D isData) {
+    public <D> TE getUnique(Field uniqueField, String operator, D isData) {
         if (!uniqueField.isAnnotationPresent(UniqueColumn.class)) {
             throw new RuntimeException("Field " + uniqueField.getName() + " is not annotated with @UniqueField");
         }
-        List<TE> results = get(uniqueField, isData);
+        List<TE> results = get(uniqueField, operator, isData);
         if (results.size() > 1) {
             throw new IllegalStateException("Multiple results found for unique field: " + uniqueField.getName() + " with value: " + isData.toString());
         } else if (results.isEmpty()) {
