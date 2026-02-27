@@ -262,9 +262,9 @@ Rules:
 
 ### Dao
 
-`Dao<T, PK>` is a generic, `AutoCloseable` CRUD abstraction.
+`Dao<TE, PK>` is a generic, `AutoCloseable` CRUD abstraction.
 
-`T` = The entity implementing marker interface `TableEntity`
+`TE` = The entity implementing marker interface `TableEntity`
 
 `PK` = The [@PrimaryKey](#primarykey) class type
 
@@ -315,11 +315,11 @@ If created via `DAOFactory.createDAO(connection, entityClass)`:
 
 ```java
 try (Connection connection = Database.connect()) { // Opens a new connection
-    try (Dao<Entity, PK> dao1 = DAOFactory.createDAO(Entity.class)) { // Does not open a new connection
+    try (Dao<Entity, PK> dao1 = DAOFactory.createDAO(connection, Entity.class)) { // Does not open a new connection
         // Use dao1
     } // Does not close a connection
         
-    try (Dao<Entity2, PK2> dao2 = DAOFactory.createDAO(Entity.class)) { // Does not open a new connection
+    try (Dao<Entity2, PK2> dao2 = DAOFactory.createDAO(connection, Entity.class)) { // Does not open a new connection
         // Use dao2
     } // Does not close a connection
 } // Closes the connection
