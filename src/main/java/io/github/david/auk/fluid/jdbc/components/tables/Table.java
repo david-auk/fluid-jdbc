@@ -3,12 +3,16 @@ package io.github.david.auk.fluid.jdbc.components.tables;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.sun.jdi.InvalidModuleException;
 import io.github.david.auk.fluid.jdbc.annotations.table.field.ForeignKey;
 import io.github.david.auk.fluid.jdbc.annotations.table.field.TableColumn;
 import io.github.david.auk.fluid.jdbc.annotations.table.constructor.TableInherits;
 import io.github.david.auk.fluid.jdbc.annotations.table.constructor.TableConstructor;
 import io.github.david.auk.fluid.jdbc.components.daos.Dao;
-import io.github.david.auk.fluid.jdbc.components.daos.querying.FilterCriterion;
+import io.github.david.auk.fluid.jdbc.components.daos.querying.FilterCriterion.FilterCriterion;
+import io.github.david.auk.fluid.jdbc.components.daos.querying.operator.Operator;
+import io.github.david.auk.fluid.jdbc.components.daos.querying.operator.ValueFormat;
+import io.github.david.auk.fluid.jdbc.components.daos.querying.operator.ValueOperator;
 import io.github.david.auk.fluid.jdbc.factories.DAOFactory;
 
 import java.lang.reflect.AccessibleObject;
@@ -112,19 +116,14 @@ public class Table<T extends TableEntity, K> {
      * @throws IllegalArgumentException if any Field isn’t part of this table’s entity
      */
     public String buildGetQuery(
-            List<FilterCriterion<?>> filters,
+            List<FilterCriterion> filters,
             Field orderByField,
             boolean ascending
     ) {
         StringBuilder sql = new StringBuilder("SELECT * FROM ")
                 .append(tableName);
 
-        boolean first = true;
-        for (FilterCriterion<?> criterion : filters) {
-            if (appendFilterPredicate(sql, criterion, first)) {
-                first = false;
-            }
-        }
+        appendFilters(sql, filters);
 
         // append ORDER BY if requested
         if (orderByField != null) {
@@ -451,38 +450,44 @@ public class Table<T extends TableEntity, K> {
      * <ul>
      *   <li>Null-valued criteria are skipped.</li>
      *   <li>Predicates are combined with {@code AND} in the order provided.</li>
-     *   <li>Uses {@code LIKE ?} when {@link FilterCriterion#wildcard()} is true, otherwise {@code = ?}.</li>
      * </ul>
      *
      * <p>Safety: if no non-null predicates remain, this throws to prevent accidental full-table deletes.</p>
+     * TODO Implement delete query
      */
-    public String buildDeleteQuery(List<FilterCriterion<?>> filters) {
+    public String buildDeleteQuery(List<FilterCriterion> filters) {
         StringBuilder sql = new StringBuilder("DELETE FROM ").append(tableName);
 
-        boolean first = true;
-        int predCount = 0;
-
-        for (FilterCriterion<?> criterion : filters) {
-            if (appendFilterPredicate(sql, criterion, first)) {
-                first = false;
-                predCount++;
-            }
+        // Only allow delete query if it has filters
+        // TODO Think about allowing deleteAll() method in Dao
+        if (filters.isEmpty()) {
+            throw new InvalidModuleException("Empty filters are not allowed");
         }
 
-        if (predCount == 0) {
-            throw new IllegalArgumentException(
-                    "Refusing to build DELETE without any non-null filters for table '" + tableName + "'.");
-        }
+        appendFilters(sql, filters);
 
         return sql.toString();
     }
 
-    private boolean appendFilterPredicate(StringBuilder sql, FilterCriterion<?> criterion, boolean first) {
-        Field f = criterion.field();
-        Object v = criterion.value();
+    private void appendFilters(StringBuilder sql, List<FilterCriterion> filters) {
+        if (!filters.isEmpty()) {
+            assertTailingSpace(sql);
 
-        // skip null filters
-        if (v == null) return false;
+            sql.append("WHERE");
+
+            for (int i = 0; i < filters.size(); i++) {
+                if (i > 0) {
+                    assertTailingSpace(sql);
+                    sql.append("AND");
+                }
+                appendFilterValue(sql, filters.get(i));
+            }
+        }
+    }
+
+    private void appendFilterValue(StringBuilder sql, FilterCriterion filterCriterion) {
+        Field f = filterCriterion.getField();
+        Operator operator = filterCriterion.getOperator();
 
         // validate field belongs to this entity
         if (!f.getDeclaringClass().equals(clazz)) {
@@ -496,10 +501,64 @@ public class Table<T extends TableEntity, K> {
                     "Missing field " + f.getName() + " in table " + tableName);
         }
 
-        sql.append(first ? " WHERE " : " AND ")
-                .append(col)
-                .append(criterion.wildcard() ? " LIKE ?" : " = ?");
+        assertTailingSpace(sql);
 
-        return true;
+        sql.append(col)
+            .append(" ")
+            .append(operator.primary());
+
+        // If we're expecting a value within our filterCriterion
+        if (operator instanceof ValueOperator valueOperator) {
+            Object value = filterCriterion.getValue();
+
+            sql.append(" ");
+
+            if (valueOperator.valueFormat() == ValueFormat.SINGLE_VALUE) {
+                sql.append("?");
+                return;
+            }
+
+            if (!(value instanceof Collection)) {
+                throw new IllegalArgumentException("Non-collection values are not supported if the operators value format is not Single value");
+            }
+
+            appendValueFormat(sql, valueOperator.valueFormat(), (Collection<?>) value);
+        }
+    }
+
+    private void appendValueFormat(StringBuilder sql, ValueFormat valueFormat, Collection<?> values) {
+        if (values.isEmpty()) {
+            throw new IllegalArgumentException("Must have at least one value");
+        }
+
+        if (valueFormat == ValueFormat.RANGE) {
+            if (values.size() != 2) throw new IllegalArgumentException("Must have 2 values for RANGE Operators");
+
+            assertTailingSpace(sql);
+            sql.append("? AND ?");
+        }
+
+        assertTailingSpace(sql);
+
+        if (valueFormat == ValueFormat.MULTI_VALUE) {
+            sql.append("(");
+            for (int i = 0; i < values.size(); i++) {
+                if (i > 0) {
+                    sql.append(", ");
+                }
+                sql.append("?");
+            }
+            sql.append(")");
+        }
+    }
+
+    /**
+     * Small helper method to ensure our query has a space
+     * @param sql the SQL query string that will get a space at the end
+     */
+    private void assertTailingSpace(StringBuilder sql) {
+        if (!sql.toString().endsWith(" ")) {
+            sql.append(" ");
+        }
     }
 }
