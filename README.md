@@ -20,7 +20,7 @@
 
 ```kotlin
 repositories { mavenCentral() }
-dependencies { implementation("io.github.david-auk:fluid-jdbc:0.1.2") }
+dependencies { implementation("io.github.david-auk:fluid-jdbc:0.1.3") }
 ```
 
 ## Quickstart (minimal example)
