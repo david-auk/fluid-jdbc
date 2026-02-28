@@ -2,6 +2,7 @@ package io.github.david.auk.fluid.jdbc.dbtests.contracts.querying;
 
 import io.github.david.auk.fluid.jdbc.annotations.table.TableName;
 import io.github.david.auk.fluid.jdbc.annotations.table.constructor.TableConstructor;
+import io.github.david.auk.fluid.jdbc.annotations.table.field.Nullable;
 import io.github.david.auk.fluid.jdbc.annotations.table.field.PrimaryKey;
 import io.github.david.auk.fluid.jdbc.annotations.table.field.TableColumn;
 import io.github.david.auk.fluid.jdbc.components.tables.TableEntity;
@@ -22,8 +23,8 @@ import java.util.Objects;
 @TableName("query_test_table")
 public record EntityQuerying(
         @PrimaryKey @TableColumn String id,
-        @TableColumn String name,
-        @TableColumn String category,
+        @TableColumn @Nullable String name,
+        @TableColumn @Nullable String category,
         @TableColumn(name = "value_int") Integer valueInt,
         @TableColumn Boolean enabled
 ) implements TableEntity {
@@ -31,8 +32,8 @@ public record EntityQuerying(
     @TableConstructor
     public EntityQuerying(String id, String name, String category, Integer valueInt, Boolean enabled) {
         this.id = Objects.requireNonNull(id, "id");
-        this.name = Objects.requireNonNull(name, "name");
-        this.category = Objects.requireNonNull(category, "category");
+        this.name = name;
+        this.category = category;
         this.valueInt = Objects.requireNonNull(valueInt, "valueInt");
         this.enabled = Objects.requireNonNull(enabled, "enabled");
     }

@@ -1,6 +1,9 @@
 package io.github.david.auk.fluid.jdbc.components.daos.querying;
 
 import io.github.david.auk.fluid.jdbc.components.daos.Dao;
+import io.github.david.auk.fluid.jdbc.components.daos.querying.FilterCriterion.FilterCriterion;
+import io.github.david.auk.fluid.jdbc.components.daos.querying.operator.NoValueOperator;
+import io.github.david.auk.fluid.jdbc.components.daos.querying.operator.ValueOperator;
 import io.github.david.auk.fluid.jdbc.components.tables.TableEntity;
 import org.jetbrains.annotations.Nullable;
 
@@ -10,7 +13,7 @@ import java.util.List;
 
 public class QueryBuilder<T extends TableEntity, K> {
     private final Dao<T, K> dao;
-    private final List<FilterCriterion<?>> filters = new ArrayList<>();
+    private final List<FilterCriterion> filters = new ArrayList<>();
     @Nullable
     private Field orderByField;
     private boolean ascending = true;
@@ -22,16 +25,26 @@ public class QueryBuilder<T extends TableEntity, K> {
     /**
      * Add an “= value” filter.
      */
-    public <D> QueryBuilder<T, K> where(Field field, String operator, D value) {
-        filters.add(new FilterCriterion<>(field, Operator.fromString(operator), value));
+    public <D> QueryBuilder<T, K> where(Field field, ValueOperator valueOperator, D value) {
+        filters.add(new FilterCriterion(field, valueOperator, value));
+        return this;
+    }
+
+
+    public <D> QueryBuilder<T, K> where(Field field, NoValueOperator noValueOperator) {
+        filters.add(new FilterCriterion(field, noValueOperator));
         return this;
     }
 
     /**
      * Alias for where(...).
      */
-    public <D> QueryBuilder<T, K> and(Field field, String operator, D value) {
-        return where(field, operator, value);
+    public <D> QueryBuilder<T, K> and(Field field, ValueOperator valueOperator, D value) {
+        return where(field, valueOperator, value);
+    }
+
+    public <D> QueryBuilder<T, K> and(Field field, NoValueOperator valueOperator) {
+        return where(field, valueOperator);
     }
 
     /**
