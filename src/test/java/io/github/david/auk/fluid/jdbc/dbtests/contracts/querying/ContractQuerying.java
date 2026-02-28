@@ -6,11 +6,14 @@ import io.github.david.auk.fluid.jdbc.components.daos.querying.operator.NoValueO
 import io.github.david.auk.fluid.jdbc.components.daos.querying.operator.ValueOperator;
 import io.github.david.auk.fluid.jdbc.dbtests.contracts.ContractInterface;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
+import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -448,6 +451,40 @@ public interface ContractQuerying extends ContractInterface {
         }
     }
 
+    @ParameterizedTest
+    @MethodSource("betweenInvalidLists")
+    default void querying_where_between_throws_on_list_other_than_two_size(List<Integer> values) {
+        try (Dao<EntityQuerying, String> dao = dao(EntityQuerying.class, String.class)) {
+            populate(dao);
+
+            assertThrows(IllegalArgumentException.class, () ->
+                    new QueryBuilder<>(dao)
+                            .where(field("valueInt"), ValueOperator.BETWEEN, values)
+                            .get()
+            );
+        }
+    }
+
+    static Stream<List<Integer>> betweenInvalidLists() {
+        return Stream.of(
+                List.of(2),
+                List.of(2, 20, 30)
+        );
+    }
+
+    @Test
+    default void querying_where_between_accepts_two_values() {
+        try (Dao<EntityQuerying, String> dao = dao(EntityQuerying.class, String.class)) {
+            populate(dao);
+
+            assertDoesNotThrow(() ->
+                    new QueryBuilder<>(dao)
+                            .where(field("valueInt"), ValueOperator.BETWEEN, List.of(2, 30))
+                            .get()
+            );
+        }
+    }
+
     @Test
     default void querying_where_isNull_filtersOnName() {
         try (Dao<EntityQuerying, String> dao = dao(EntityQuerying.class, String.class)) {
@@ -471,10 +508,6 @@ public interface ContractQuerying extends ContractInterface {
             List<EntityQuerying> results = new QueryBuilder<>(dao)
                     .where(field("category"), NoValueOperator.IS_NOT_NULL)
                     .get();
-
-            for (EntityQuerying e : results) {
-                System.out.println(e.category());
-            }
 
             assertEquals(expected, results.size(), "category IS NOT NULL should match exactly the rows with a non-null category");
             assertTrue(results.stream().allMatch(e -> e.category() != null), "all matched rows must have a non-null category");

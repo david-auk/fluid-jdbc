@@ -377,7 +377,7 @@ It is intentionally simple:
 try (Dao<EntityQuerying, String> dao = DAOFactory.createDAO(EntityQuerying.class)) {
 
     List<EntityQuerying> results = new QueryBuilder<>(dao)
-        .where(EntityQuerying.class.getDeclaredField("category"), "A")
+        .where(EntityQuerying.class.getDeclaredField("category"), ValueOperator.EQUALS, "A")
         .get();
 }
 ```
@@ -402,7 +402,7 @@ try (Dao<SimpleEntity, String> dao = DAOFactory.createDAO(SimpleEntity.class)) {
 
     // Query: find all rows where name starts with "hello"
     List<SimpleEntity> hellos = new QueryBuilder<SimpleEntity, String>(dao)
-        .whereLike(SimpleEntity.class.getDeclaredField("name"), "hello%")
+        .where(SimpleEntity.class.getDeclaredField("name"), ValueOperator.LIKE, "hello%")
         .orderBy(SimpleEntity.class.getDeclaredField("id"))
         .asc()
         .get();
@@ -424,11 +424,16 @@ ORDER BY id ASC;
 
 ### WHERE filters
 
+`QueryBuilder` supports two operator categories:
+
+- **`ValueOperator`**: operators that require a value (e.g. `=`, `LIKE`, `IN`, `BETWEEN`)
+- **`NoValueOperator`**: operators that do not require a value (e.g. `IS NULL`, `IS NOT NULL`)
+
 #### Equality
 
 ```java
 new QueryBuilder<>(dao)
-    .where(EntityQuerying.class.getDeclaredField("category"), "A")
+    .where(EntityQuerying.class.getDeclaredField("category"), ValueOperator.EQUALS, "A")
     .get();
 ```
 
@@ -438,11 +443,11 @@ Equivalent SQL:
 WHERE category = 'A'
 ```
 
-#### LIKE
+#### LIKE / NOT LIKE
 
 ```java
 new QueryBuilder<>(dao)
-    .whereLike(EntityQuerying.class.getDeclaredField("name"), "alpha%")
+    .where(EntityQuerying.class.getDeclaredField("name"), ValueOperator.LIKE, "alpha%")
     .get();
 ```
 
@@ -454,14 +459,66 @@ WHERE name LIKE 'alpha%'
 
 You are responsible for supplying `%` where needed.
 
+#### IN / NOT IN
+
+For `IN` and `NOT IN`, pass a `List<?>` of values.
+
+```java
+new QueryBuilder<>(dao)
+    .where(EntityQuerying.class.getDeclaredField("category"), ValueOperator.IN, List.of("A", "B"))
+    .get();
+```
+
+Equivalent SQL:
+
+```sql
+WHERE category IN ('A', 'B')
+```
+
+#### BETWEEN / NOT BETWEEN
+
+For `BETWEEN` and `NOT BETWEEN`, pass a `List<?>` of **exactly two** values.
+
+```java
+new QueryBuilder<>(dao)
+    .where(EntityQuerying.class.getDeclaredField("valueInt"), ValueOperator.BETWEEN, List.of(2, 20))
+    .get();
+```
+
+Equivalent SQL:
+
+```sql
+WHERE value_int BETWEEN 2 AND 20
+```
+
+If the list does not have size 2, `QueryBuilder` throws an `IllegalArgumentException`.
+
+#### IS NULL / IS NOT NULL
+
+No-value operators are used like this:
+
+```java
+new QueryBuilder<>(dao)
+    .where(EntityQuerying.class.getDeclaredField("name"), NoValueOperator.IS_NULL)
+    .get();
+```
+
+Equivalent SQL:
+
+```sql
+WHERE name IS NULL
+```
+
+> Note on NULL semantics: `NOT_EQUALS`, `NOT_IN`, `NOT_LIKE`, etc. follow SQL’s NULL rules. If you want to avoid NULL edge-cases, combine filters with an explicit `IS NOT NULL`.
+
 ### Combining filters
 
 Filters are combined using `AND`.
 
 ```java
 new QueryBuilder<>(dao)
-    .where(EntityQuerying.class.getDeclaredField("category"), "A")
-    .and(EntityQuerying.class.getDeclaredField("enabled"), true)
+    .where(EntityQuerying.class.getDeclaredField("category"), ValueOperator.EQUALS, "A")
+    .and(EntityQuerying.class.getDeclaredField("enabled"), ValueOperator.EQUALS, true)
     .get();
 ```
 
@@ -504,7 +561,7 @@ ORDER BY value_int DESC
 
 ```java
 EntityQuerying result = new QueryBuilder<>(dao)
-    .where(EntityQuerying.class.getDeclaredField("name"), "beta")
+    .where(EntityQuerying.class.getDeclaredField("name"), ValueOperator.EQUALS, "beta")
     .getUnique();
 ```
 
@@ -527,7 +584,7 @@ This keeps it:
 
 - debuggable
 - transparent
-- easy to extend later (e.g. OR, BETWEEN, LIMIT)
+- easy to extend later (e.g. OR, LIMIT)
 
 ---
 
