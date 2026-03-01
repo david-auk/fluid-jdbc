@@ -3,8 +3,9 @@ package io.github.david.auk.fluid.jdbc.components.daos;
 import io.github.david.auk.fluid.jdbc.annotations.table.field.UniqueColumn;
 import io.github.david.auk.fluid.jdbc.components.Database;
 import io.github.david.auk.fluid.jdbc.components.daos.querying.FilterCriterion.FilterCriterion;
-import io.github.david.auk.fluid.jdbc.components.daos.querying.QueryBuilder;
 import io.github.david.auk.fluid.jdbc.components.daos.querying.operator.NoValueOperator;
+import io.github.david.auk.fluid.jdbc.components.daos.querying.operator.Operator;
+import io.github.david.auk.fluid.jdbc.components.daos.querying.operator.SingleOperator;
 import io.github.david.auk.fluid.jdbc.components.daos.querying.operator.ValueOperator;
 import io.github.david.auk.fluid.jdbc.components.tables.Table;
 import io.github.david.auk.fluid.jdbc.components.tables.TableEntity;
@@ -222,7 +223,7 @@ public class Dao<TE extends TableEntity, PK> implements AutoCloseable {
      * @throws RuntimeException         if a SQL error occurs
      * @throws IllegalArgumentException if any Field is invalid for this entity
      */
-    public List<TE> get(
+    List<TE> get(
             List<FilterCriterion> filters,
             Field orderByField,
             boolean ascending
@@ -235,10 +236,10 @@ public class Dao<TE extends TableEntity, PK> implements AutoCloseable {
             int idx = 1;
             for (FilterCriterion criterion : filters) {
 
-                // Check if we need to set an object in our query
-                boolean valueExpected = ValueOperator.class.isAssignableFrom(criterion.getOperator().getClass());
+                Operator operator = criterion.getOperator();
 
-                if (valueExpected) {
+                // Check if we need to set an object in our query
+                if (operator instanceof ValueOperator) {
                     Object value = criterion.getValue();
 
                     if (value instanceof Collection<?> collection) {
@@ -270,7 +271,7 @@ public class Dao<TE extends TableEntity, PK> implements AutoCloseable {
      * @param isData     The data you want to match
      * @return Entities from query
      */
-    public <D> List<TE> get(Field whereField, ValueOperator operator, D isData) {
+    public <D> List<TE> get(Field whereField, SingleOperator operator, D isData) {
         return new QueryBuilder<>(this)
                 .where(whereField, operator, isData)
                 .get();
@@ -300,7 +301,7 @@ public class Dao<TE extends TableEntity, PK> implements AutoCloseable {
      * @throws RuntimeException if the field is not annotated with @UniqueColumn
      * @throws IllegalStateException if multiple results are found
      */
-    public <D> TE getUnique(Field uniqueField, ValueOperator operator, D isData) {
+    public <D> TE getUnique(Field uniqueField, SingleOperator operator, D isData) {
         validateUniqueField(uniqueField);
         List<TE> results = get(uniqueField, operator, isData);
         return requireUniqueResult(results, uniqueField, String.valueOf(isData));

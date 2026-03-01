@@ -1,13 +1,12 @@
 package io.github.david.auk.fluid.jdbc.components.daos.querying.operator;
 
-public enum NoValueOperator implements Operator {
-
-    IS_NULL("IS NULL"),
-    IS_NOT_NULL("IS NOT NULL");
+public enum MultiOperator implements ValueOperator {
+    IN("IN"),
+    NOT_IN("NOT IN");
 
     private final String primary;
 
-    NoValueOperator(String primary) {
+    MultiOperator(String primary) {
         this.primary = primary;
     }
 

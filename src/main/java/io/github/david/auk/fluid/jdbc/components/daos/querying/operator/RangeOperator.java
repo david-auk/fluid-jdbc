@@ -1,13 +1,13 @@
 package io.github.david.auk.fluid.jdbc.components.daos.querying.operator;
 
-public enum NoValueOperator implements Operator {
+public enum RangeOperator implements ValueOperator {
 
-    IS_NULL("IS NULL"),
-    IS_NOT_NULL("IS NOT NULL");
+    BETWEEN("BETWEEN"),
+    NOT_BETWEEN("NOT BETWEEN");
 
     private final String primary;
 
-    NoValueOperator(String primary) {
+    RangeOperator(String primary) {
         this.primary = primary;
     }
 

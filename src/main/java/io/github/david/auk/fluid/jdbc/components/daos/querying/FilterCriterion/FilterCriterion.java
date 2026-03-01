@@ -32,7 +32,6 @@ public class FilterCriterion {
     }
 
     public Object getValue() {
-
         if (NoValueOperator.class.isAssignableFrom(operator.getClass())) {
             throw new  IllegalArgumentException("Filter operator type: " + operator.getClass().getName()+ " does not support values");
         }

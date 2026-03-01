@@ -10,9 +10,7 @@ import io.github.david.auk.fluid.jdbc.annotations.table.constructor.TableInherit
 import io.github.david.auk.fluid.jdbc.annotations.table.constructor.TableConstructor;
 import io.github.david.auk.fluid.jdbc.components.daos.Dao;
 import io.github.david.auk.fluid.jdbc.components.daos.querying.FilterCriterion.FilterCriterion;
-import io.github.david.auk.fluid.jdbc.components.daos.querying.operator.Operator;
-import io.github.david.auk.fluid.jdbc.components.daos.querying.operator.ValueFormat;
-import io.github.david.auk.fluid.jdbc.components.daos.querying.operator.ValueOperator;
+import io.github.david.auk.fluid.jdbc.components.daos.querying.operator.*;
 import io.github.david.auk.fluid.jdbc.factories.DAOFactory;
 
 import java.lang.reflect.AccessibleObject;
@@ -513,7 +511,7 @@ public class Table<T extends TableEntity, K> {
 
             sql.append(" ");
 
-            if (valueOperator.valueFormat() == ValueFormat.SINGLE_VALUE) {
+            if (valueOperator instanceof SingleOperator) {
                 sql.append("?");
                 return;
             }
@@ -522,16 +520,16 @@ public class Table<T extends TableEntity, K> {
                 throw new IllegalArgumentException("Non-collection values are not supported if the operators value format is not Single value");
             }
 
-            appendValueFormat(sql, valueOperator.valueFormat(), (Collection<?>) value);
+            appendValueFormat(sql, valueOperator, (Collection<?>) value);
         }
     }
 
-    private void appendValueFormat(StringBuilder sql, ValueFormat valueFormat, Collection<?> values) {
+    private void appendValueFormat(StringBuilder sql, ValueOperator valueOperator, Collection<?> values) {
         if (values.isEmpty()) {
             throw new IllegalArgumentException("Must have at least one value");
         }
 
-        if (valueFormat == ValueFormat.RANGE) {
+        if (valueOperator instanceof RangeOperator) {
             if (values.size() != 2) throw new IllegalArgumentException("Must have 2 values for RANGE Operators");
 
             assertTailingSpace(sql);
@@ -540,7 +538,7 @@ public class Table<T extends TableEntity, K> {
 
         assertTailingSpace(sql);
 
-        if (valueFormat == ValueFormat.MULTI_VALUE) {
+        if (valueOperator instanceof MultiOperator) {
             sql.append("(");
             for (int i = 0; i < values.size(); i++) {
                 if (i > 0) {
