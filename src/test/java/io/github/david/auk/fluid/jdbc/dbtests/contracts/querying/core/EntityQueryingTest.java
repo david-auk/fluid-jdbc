@@ -1,4 +1,4 @@
-package io.github.david.auk.fluid.jdbc.dbtests.contracts.querying;
+package io.github.david.auk.fluid.jdbc.dbtests.contracts.querying.core;
 
 import io.github.david.auk.fluid.jdbc.components.tables.TableEntity;
 import org.junit.jupiter.api.Test;

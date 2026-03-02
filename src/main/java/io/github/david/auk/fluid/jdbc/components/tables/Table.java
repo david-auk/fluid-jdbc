@@ -118,10 +118,16 @@ public class Table<T extends TableEntity, K> {
             Field orderByField,
             boolean ascending
     ) {
-        StringBuilder sql = new StringBuilder("SELECT * FROM ")
+        StringBuilder sql = new StringBuilder("SELECT ")
+                .append(tableName)
+                .append(".* FROM ")
                 .append(tableName);
 
-        appendFilters(sql, filters);
+        // Build JOINs based on which filter fields belong to referenced entities.
+        Map<Class<?>, JoinInfo> joins = buildRequiredJoins(filters);
+        appendJoins(sql, joins);
+
+        appendFilters(sql, filters, joins, true);
 
         // append ORDER BY if requested
         if (orderByField != null) {
@@ -136,6 +142,8 @@ public class Table<T extends TableEntity, K> {
                         "Missing order-by field " + orderByField.getName());
             }
             sql.append(" ORDER BY ")
+                    .append(tableName)
+                    .append(".")
                     .append(orderCol)
                     .append(ascending ? " ASC" : " DESC");
         }
@@ -462,12 +470,17 @@ public class Table<T extends TableEntity, K> {
             throw new InvalidModuleException("Empty filters are not allowed");
         }
 
-        appendFilters(sql, filters);
+        appendFilters(sql, filters, Collections.emptyMap(), false);
 
         return sql.toString();
     }
 
-    private void appendFilters(StringBuilder sql, List<FilterCriterion> filters) {
+    private void appendFilters(
+            StringBuilder sql,
+            List<FilterCriterion> filters,
+            Map<Class<?>, JoinInfo> joins,
+            boolean allowJoinFilters
+    ) {
         if (!filters.isEmpty()) {
             assertTailingSpace(sql);
 
@@ -478,32 +491,59 @@ public class Table<T extends TableEntity, K> {
                     assertTailingSpace(sql);
                     sql.append("AND");
                 }
-                appendFilterValue(sql, filters.get(i));
+                appendFilterValue(sql, filters.get(i), joins, allowJoinFilters);
             }
         }
     }
 
-    private void appendFilterValue(StringBuilder sql, FilterCriterion filterCriterion) {
+    private void appendFilterValue(
+            StringBuilder sql,
+            FilterCriterion filterCriterion,
+            Map<Class<?>, JoinInfo> joins,
+            boolean allowJoinFilters
+    ) {
         Field f = filterCriterion.getField();
         Operator operator = filterCriterion.getOperator();
 
-        // validate field belongs to this entity
-        if (!f.getDeclaringClass().equals(clazz)) {
-            throw new IllegalArgumentException(
-                    "Field " + f.getName() + " not from " + clazz.getName());
-        }
+        // Resolve column + table qualification.
+        String qualifiedCol;
 
-        String col = fieldToColumnName.get(f);
-        if (col == null) {
-            throw new IllegalArgumentException(
-                    "Missing field " + f.getName() + " in table " + tableName);
+        // Base-entity field
+        if (f.getDeclaringClass().equals(clazz)) {
+            String col = fieldToColumnName.get(f);
+            if (col == null) {
+                throw new IllegalArgumentException(
+                        "Missing field " + f.getName() + " in table " + tableName);
+            }
+            qualifiedCol = tableName + "." + col;
+        } else {
+            // Joined-entity field (only allowed for SELECT queries)
+            if (!allowJoinFilters) {
+                throw new IllegalArgumentException(
+                        "Field " + f.getName() + " not from " + clazz.getName());
+            }
+
+            JoinInfo join = joins.get(f.getDeclaringClass());
+            if (join == null) {
+                throw new IllegalArgumentException(
+                        "Field " + f.getName() + " not from " + clazz.getName() + " and no @ForeignKey join found for " +
+                                f.getDeclaringClass().getName());
+            }
+
+            String col = join.refFieldToColumn().get(f);
+            if (col == null) {
+                throw new IllegalArgumentException(
+                        "Missing field " + f.getName() + " in joined table " + join.refTableName());
+            }
+
+            qualifiedCol = join.refTableName() + "." + col;
         }
 
         assertTailingSpace(sql);
 
-        sql.append(col)
-            .append(" ")
-            .append(operator.primary());
+        sql.append(qualifiedCol)
+                .append(" ")
+                .append(operator.primary());
 
         // If we're expecting a value within our filterCriterion
         if (operator instanceof ValueOperator valueOperator) {
@@ -511,7 +551,7 @@ public class Table<T extends TableEntity, K> {
 
             sql.append(" ");
 
-            if (valueOperator instanceof SingleOperator) {
+            if (valueOperator instanceof SingleValueOperator) {
                 sql.append("?");
                 return;
             }
@@ -557,6 +597,108 @@ public class Table<T extends TableEntity, K> {
     private void assertTailingSpace(StringBuilder sql) {
         if (!sql.toString().endsWith(" ")) {
             sql.append(" ");
+        }
+    }
+    /**
+     * Build JOIN metadata for any filters that target a field declared on a referenced entity.
+     *
+     * <p>Rules:</p>
+     * <ul>
+     *   <li>A filter field declared on {@code clazz} uses no JOIN.</li>
+     *   <li>A filter field declared on some other class {@code R} is supported if (and only if)
+     *       this entity has exactly one {@link ForeignKey} field whose type is {@code R}.</li>
+     *   <li>Only single-column (field-based) PKs are supported for join targets. Composite/method-based PKs will throw.</li>
+     * </ul>
+     */
+    private Map<Class<?>, JoinInfo> buildRequiredJoins(List<FilterCriterion> filters) {
+        if (filters == null || filters.isEmpty()) {
+            return Collections.emptyMap();
+        }
+
+        Map<Class<?>, JoinInfo> joins = new LinkedHashMap<>();
+
+        for (FilterCriterion criterion : filters) {
+            Field f = criterion.getField();
+            if (f == null) continue;
+
+            Class<?> declaring = f.getDeclaringClass();
+            if (declaring.equals(clazz)) {
+                continue;
+            }
+
+            // Already computed
+            if (joins.containsKey(declaring)) {
+                continue;
+            }
+
+            if (!TableEntity.class.isAssignableFrom(declaring)) {
+                throw new IllegalArgumentException(
+                        "Filter field " + f.getName() + " is declared on " + declaring.getName() +
+                                " which is not a TableEntity; cannot join");
+            }
+
+            @SuppressWarnings("unchecked")
+            Class<? extends TableEntity> refClass = (Class<? extends TableEntity>) declaring;
+
+            // Find the local @ForeignKey field that points to this refClass
+            List<Field> matchingFkFields = Arrays.stream(clazz.getDeclaredFields())
+                    .filter(local -> local.isAnnotationPresent(ForeignKey.class))
+                    .filter(local -> local.getType().equals(refClass))
+                    .toList();
+
+            if (matchingFkFields.isEmpty()) {
+                throw new IllegalArgumentException(
+                        "No @ForeignKey field on " + clazz.getName() + " points to " + refClass.getName());
+            }
+            if (matchingFkFields.size() > 1) {
+                throw new IllegalArgumentException(
+                        "Multiple @ForeignKey fields on " + clazz.getName() + " point to " + refClass.getName() +
+                                "; join target is ambiguous");
+            }
+
+            Field fkField = matchingFkFields.get(0);
+            String baseFkColumn = fieldToColumnName.get(fkField);
+            if (baseFkColumn == null) {
+                throw new IllegalArgumentException(
+                        "Missing FK field mapping for " + fkField.getName() + " in table " + tableName);
+            }
+
+            // Resolve referenced table name + PK column (single-column PK only)
+            String refTableName = TableUtils.getTableName(refClass);
+            Table<? extends TableEntity, Object> refTable = new Table<>(refClass);
+            String refPkColumn;
+            try {
+                refPkColumn = refTable.getPrimaryKeyColumnName();
+            } catch (UnsupportedOperationException e) {
+                throw new UnsupportedOperationException(
+                        "Joining on composite/method-based PK is not supported yet for " + refClass.getName(), e);
+            }
+
+            Map<Field, String> refFieldToColumn = TableUtils.mapFieldToColumnNames(refClass);
+
+            joins.put(refClass, new JoinInfo(refTableName, baseFkColumn, refPkColumn, refFieldToColumn));
+        }
+
+        return joins;
+    }
+
+    private void appendJoins(StringBuilder sql, Map<Class<?>, JoinInfo> joins) {
+        if (joins == null || joins.isEmpty()) {
+            return;
+        }
+
+        for (JoinInfo join : joins.values()) {
+            assertTailingSpace(sql);
+            sql.append("JOIN ")
+                    .append(join.refTableName())
+                    .append(" ON ")
+                    .append(tableName)
+                    .append(".")
+                    .append(join.baseFkColumn())
+                    .append(" = ")
+                    .append(join.refTableName())
+                    .append(".")
+                    .append(join.refPkColumn());
         }
     }
 }

@@ -4,7 +4,7 @@ import io.github.david.auk.fluid.jdbc.components.daos.querying.FilterCriterion.F
 import io.github.david.auk.fluid.jdbc.components.daos.querying.operator.MultiOperator;
 import io.github.david.auk.fluid.jdbc.components.daos.querying.operator.NoValueOperator;
 import io.github.david.auk.fluid.jdbc.components.daos.querying.operator.RangeOperator;
-import io.github.david.auk.fluid.jdbc.components.daos.querying.operator.SingleOperator;
+import io.github.david.auk.fluid.jdbc.components.daos.querying.operator.SingleValueOperator;
 import io.github.david.auk.fluid.jdbc.components.tables.TableEntity;
 import org.jetbrains.annotations.Nullable;
 
@@ -29,7 +29,7 @@ public class QueryBuilder<T extends TableEntity, K> implements QueryInterface<T,
      * Add an “= value” filter.
      */
     @Override
-    public QueryBuilder<T, K> where(Field field, SingleOperator valueOperator, Object value) {
+    public QueryBuilder<T, K> where(Field field, SingleValueOperator valueOperator, Object value) {
         filters.add(new FilterCriterion(field, valueOperator, value));
         return this;
     }
@@ -94,7 +94,7 @@ public class QueryBuilder<T extends TableEntity, K> implements QueryInterface<T,
      * Alias for where(...).
      */
     @Override
-    public QueryBuilder<T, K> and(Field field, SingleOperator valueOperator, Object value) {
+    public QueryBuilder<T, K> and(Field field, SingleValueOperator valueOperator, Object value) {
         return where(field, valueOperator, value);
     }
 

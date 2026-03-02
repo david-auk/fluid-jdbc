@@ -3,6 +3,7 @@ package io.github.david.auk.fluid.jdbc.dbtests.contracts.foreignkey;
 import io.github.david.auk.fluid.jdbc.components.daos.Dao;
 import io.github.david.auk.fluid.jdbc.dbtests.contracts.ContractInterface;
 import org.junit.jupiter.api.Test;
+
 import static org.junit.jupiter.api.Assumptions.*;
 
 import static org.junit.jupiter.api.Assertions.*;

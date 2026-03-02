@@ -1,22 +1,30 @@
 package io.github.david.auk.fluid.jdbc.dbtests.support;
 
 import io.github.david.auk.fluid.jdbc.components.Database;
-import io.github.david.auk.fluid.jdbc.dbtests.contracts.ContractInterface;
 import io.github.david.auk.fluid.jdbc.dbtests.contracts.crud.ContractCrud;
 import io.github.david.auk.fluid.jdbc.dbtests.contracts.foreignkey.ContractForeignKey;
 import io.github.david.auk.fluid.jdbc.dbtests.contracts.inheritance.ContractInheritance;
-import io.github.david.auk.fluid.jdbc.dbtests.contracts.querying.ContractQuerying;
+import io.github.david.auk.fluid.jdbc.dbtests.contracts.querying.foreign.ContractQueryingForeign;
+import io.github.david.auk.fluid.jdbc.dbtests.contracts.querying.core.ContractQuerying;
 import org.junit.jupiter.api.*;
 import org.testcontainers.containers.JdbcDatabaseContainer;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.sql.Connection;
 import java.sql.SQLException;
-import java.sql.Statement;
 
 @Testcontainers
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-public abstract class AbstractJdbcContainerTest implements ContractCrud, ContractForeignKey, ContractInheritance, ContractQuerying {
+public abstract class AbstractJdbcContainerTest implements
+
+        // Basic DAO tests
+        ContractCrud,
+        ContractForeignKey,
+        ContractInheritance,
+
+        // Querying tests
+        ContractQuerying,
+        ContractQueryingForeign {
 
     private JdbcDatabaseContainer<?> container;
 
@@ -44,6 +52,9 @@ public abstract class AbstractJdbcContainerTest implements ContractCrud, Contrac
         return new String[]{
                 // FK tables first
                 "DROP TABLE IF EXISTS local_test_table", "DROP TABLE IF EXISTS foreign_test_table",
+
+                // Querying (Foreign JOIN tests)
+                "DROP TABLE IF EXISTS local_query_entity", "DROP TABLE IF EXISTS foreign_query_entity",
 
                 // CRUD
                 "DROP TABLE IF EXISTS crud_test_table",
@@ -97,6 +108,28 @@ public abstract class AbstractJdbcContainerTest implements ContractCrud, Contrac
                     CONSTRAINT fk_local_foreign_entity
                         FOREIGN KEY (foreign_entity_name)
                         REFERENCES foreign_test_table (name)
+                        ON UPDATE CASCADE
+                        ON DELETE RESTRICT
+                )
+                """,
+
+                // Querying Foreign JOIN tables: referenced table first
+                """
+                CREATE TABLE foreign_query_entity (
+                    id   VARCHAR(36) PRIMARY KEY,
+                    name VARCHAR(255) NOT NULL
+                )
+                """,
+                """
+                CREATE TABLE local_query_entity (
+                    id         VARCHAR(36) PRIMARY KEY,
+                    name       VARCHAR(255) NOT NULL,
+                    foreign_id VARCHAR(36)  NOT NULL,
+                    value_int  INTEGER,
+
+                    CONSTRAINT fk_local_query_entity_foreign
+                        FOREIGN KEY (foreign_id)
+                        REFERENCES foreign_query_entity(id)
                         ON UPDATE CASCADE
                         ON DELETE RESTRICT
                 )

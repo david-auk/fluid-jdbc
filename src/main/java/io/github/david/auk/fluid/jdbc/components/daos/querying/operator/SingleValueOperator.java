@@ -1,6 +1,6 @@
 package io.github.david.auk.fluid.jdbc.components.daos.querying.operator;
 
-public enum SingleOperator implements ValueOperator {
+public enum SingleValueOperator implements ValueOperator {
 
     EQUALS("="),
     NOT_EQUALS("!="),
@@ -15,7 +15,7 @@ public enum SingleOperator implements ValueOperator {
 
     private final String primary;
 
-    SingleOperator(String primary) {
+    SingleValueOperator(String primary) {
         this.primary = primary;
     }
 

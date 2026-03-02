@@ -1,21 +1,18 @@
-package io.github.david.auk.fluid.jdbc.dbtests.contracts.querying;
+package io.github.david.auk.fluid.jdbc.dbtests.contracts.querying.core;
 
 import io.github.david.auk.fluid.jdbc.components.daos.Dao;
 import io.github.david.auk.fluid.jdbc.components.daos.QueryBuilder;
 import io.github.david.auk.fluid.jdbc.components.daos.querying.operator.MultiOperator;
 import io.github.david.auk.fluid.jdbc.components.daos.querying.operator.NoValueOperator;
 import io.github.david.auk.fluid.jdbc.components.daos.querying.operator.RangeOperator;
-import io.github.david.auk.fluid.jdbc.components.daos.querying.operator.SingleOperator;
+import io.github.david.auk.fluid.jdbc.components.daos.querying.operator.SingleValueOperator;
 import io.github.david.auk.fluid.jdbc.dbtests.contracts.ContractInterface;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.MethodSource;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
-import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -151,7 +148,7 @@ public interface ContractQuerying extends ContractInterface {
             populate(dao);
 
             List<EntityQuerying> results = new QueryBuilder<>(dao)
-                    .where(field("category"), SingleOperator.EQUALS, "A")
+                    .where(field("category"), SingleValueOperator.EQUALS, "A")
                     .get();
 
             assertEquals(4, results.size(), "category A should return 4 rows from the unified dataset");
@@ -165,7 +162,7 @@ public interface ContractQuerying extends ContractInterface {
             populate(dao);
 
             List<EntityQuerying> results = new QueryBuilder<>(dao)
-                    .where(field("enabled"), SingleOperator.EQUALS, true)
+                    .where(field("enabled"), SingleValueOperator.EQUALS, true)
                     .get();
 
             assertEquals(9, results.size(), "enabled=true should return 9 rows from the unified dataset");
@@ -180,7 +177,7 @@ public interface ContractQuerying extends ContractInterface {
 
             // Expect: alpha, alpha-2, alphabet, alpha-max
             List<EntityQuerying> results = new QueryBuilder<>(dao)
-                    .where(field("name"), SingleOperator.LIKE, "alpha%")
+                    .where(field("name"), SingleValueOperator.LIKE, "alpha%")
                     .get();
 
             assertEquals(4, results.size(), "alpha% should match alpha, alpha-2, alphabet, alpha-max");
@@ -194,7 +191,7 @@ public interface ContractQuerying extends ContractInterface {
             populate(dao);
 
             List<EntityQuerying> results = new QueryBuilder<>(dao)
-                    .where(field("name"), SingleOperator.LIKE, "%max%")
+                    .where(field("name"), SingleValueOperator.LIKE, "%max%")
                     .get();
 
             assertEquals(2, results.size(), "%max% should match exactly two rows in the unified dataset");
@@ -211,8 +208,8 @@ public interface ContractQuerying extends ContractInterface {
 
             // In dataset: category A has alpha(true), alpha-2(false), alphabet(true), alpha-max(false)
             List<EntityQuerying> results = new QueryBuilder<>(dao)
-                    .where(field("category"), SingleOperator.EQUALS, "A")
-                    .and(field("enabled"), SingleOperator.EQUALS, true)
+                    .where(field("category"), SingleValueOperator.EQUALS, "A")
+                    .and(field("enabled"), SingleValueOperator.EQUALS, true)
                     .get();
 
             assertEquals(2, results.size(), "category A AND enabled=true should return 2 rows");
@@ -266,7 +263,7 @@ public interface ContractQuerying extends ContractInterface {
             populate(dao);
 
             EntityQuerying result = new QueryBuilder<>(dao)
-                    .where(field("category"), SingleOperator.EQUALS, "__does_not_exist__")
+                    .where(field("category"), SingleValueOperator.EQUALS, "__does_not_exist__")
                     .getUnique();
 
             assertNull(result, "getUnique should return null when there are no results");
@@ -279,7 +276,7 @@ public interface ContractQuerying extends ContractInterface {
             populate(dao);
 
             EntityQuerying result = new QueryBuilder<>(dao)
-                    .where(field("name"), SingleOperator.EQUALS, "beta")
+                    .where(field("name"), SingleValueOperator.EQUALS, "beta")
                     .getUnique();
 
             assertNotNull(result, "getUnique should return the entity when exactly one result exists");
@@ -294,7 +291,7 @@ public interface ContractQuerying extends ContractInterface {
 
             IllegalStateException ex = assertThrows(IllegalStateException.class, () ->
                     new QueryBuilder<>(dao)
-                            .where(field("category"), SingleOperator.EQUALS, "A")
+                            .where(field("category"), SingleValueOperator.EQUALS, "A")
                             .getUnique()
             );
 
@@ -309,7 +306,7 @@ public interface ContractQuerying extends ContractInterface {
             populate(dao);
 
             List<EntityQuerying> results = new QueryBuilder<>(dao)
-                    .where(field("valueInt"), SingleOperator.NOT_EQUALS, 1)
+                    .where(field("valueInt"), SingleValueOperator.NOT_EQUALS, 1)
                     .get();
 
             // Only "alpha" has valueInt=1
@@ -324,7 +321,7 @@ public interface ContractQuerying extends ContractInterface {
             populate(dao);
 
             List<EntityQuerying> results = new QueryBuilder<>(dao)
-                    .where(field("valueInt"), SingleOperator.GREATER_THAN, 50)
+                    .where(field("valueInt"), SingleValueOperator.GREATER_THAN, 50)
                     .get();
 
             assertEquals(3, results.size(), "valueInt > 50 should match alpha-max(100), beta-max(99), epsilon(101)");
@@ -338,7 +335,7 @@ public interface ContractQuerying extends ContractInterface {
             populate(dao);
 
             List<EntityQuerying> results = new QueryBuilder<>(dao)
-                    .where(field("valueInt"), SingleOperator.GREATER_THAN_OR_EQUAL, 50)
+                    .where(field("valueInt"), SingleValueOperator.GREATER_THAN_OR_EQUAL, 50)
                     .get();
 
             assertEquals(4, results.size(), "valueInt >= 50 should include gammadion(50) as well");
@@ -352,7 +349,7 @@ public interface ContractQuerying extends ContractInterface {
             populate(dao);
 
             List<EntityQuerying> results = new QueryBuilder<>(dao)
-                    .where(field("valueInt"), SingleOperator.LESS_THAN, 0)
+                    .where(field("valueInt"), SingleValueOperator.LESS_THAN, 0)
                     .get();
 
             assertEquals(1, results.size(), "valueInt < 0 should match only gamma-low(-10)");
@@ -366,7 +363,7 @@ public interface ContractQuerying extends ContractInterface {
             populate(dao);
 
             List<EntityQuerying> results = new QueryBuilder<>(dao)
-                    .where(field("valueInt"), SingleOperator.LESS_THAN_OR_EQUAL, 0)
+                    .where(field("valueInt"), SingleValueOperator.LESS_THAN_OR_EQUAL, 0)
                     .get();
 
             assertEquals(2, results.size(), "valueInt <= 0 should match gamma(0) and gamma-low(-10)");
@@ -382,7 +379,7 @@ public interface ContractQuerying extends ContractInterface {
             // Avoid NULL semantics by explicitly requiring name IS NOT NULL.
             List<EntityQuerying> results = new QueryBuilder<>(dao)
                     .where(field("name"), NoValueOperator.IS_NOT_NULL)
-                    .and(field("name"), SingleOperator.NOT_LIKE, "alpha%")
+                    .and(field("name"), SingleValueOperator.NOT_LIKE, "alpha%")
                     .get();
 
             assertTrue(results.stream().allMatch(e -> e.name() != null && !e.name().startsWith("alpha")),

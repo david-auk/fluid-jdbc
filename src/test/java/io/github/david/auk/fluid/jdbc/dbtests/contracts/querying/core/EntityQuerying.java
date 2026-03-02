@@ -1,4 +1,4 @@
-package io.github.david.auk.fluid.jdbc.dbtests.contracts.querying;
+package io.github.david.auk.fluid.jdbc.dbtests.contracts.querying.core;
 
 import io.github.david.auk.fluid.jdbc.annotations.table.TableName;
 import io.github.david.auk.fluid.jdbc.annotations.table.constructor.TableConstructor;
