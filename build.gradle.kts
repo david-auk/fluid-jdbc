@@ -46,6 +46,9 @@ repositories {
 
 dependencies {
     api(kotlin("stdlib"))
+
+    annotationProcessor(project(":fluid-jdbc-processor"))
+
     testImplementation(kotlin("test"))
     testImplementation("org.junit.jupiter:junit-jupiter:5.11.0")
     testImplementation(platform("org.junit:junit-bom:5.11.0"))
