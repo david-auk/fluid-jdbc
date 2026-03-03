@@ -11,6 +11,10 @@ import io.github.david.auk.fluid.jdbc.annotations.table.constructor.TableConstru
 import io.github.david.auk.fluid.jdbc.components.daos.Dao;
 import io.github.david.auk.fluid.jdbc.components.daos.querying.FilterCriterion.FilterCriterion;
 import io.github.david.auk.fluid.jdbc.components.daos.querying.operator.*;
+import io.github.david.auk.fluid.jdbc.components.tables.utils.TableUtils;
+import io.github.david.auk.fluid.jdbc.components.tables.utils.query.EntityColumnValuesUtil;
+import io.github.david.auk.fluid.jdbc.components.tables.utils.query.EntityValueResolver;
+import io.github.david.auk.fluid.jdbc.components.tables.utils.query.StatementValueUtil;
 import io.github.david.auk.fluid.jdbc.factories.DAOFactory;
 
 import java.lang.reflect.AccessibleObject;
@@ -21,13 +25,13 @@ import java.sql.*;
 import java.util.*;
 import java.util.stream.Collectors;
 
-public class Table<T extends TableEntity, K> {
+public class Table<TE extends TableEntity, PK> {
 
     private static final ObjectMapper objectMapper = new ObjectMapper();
 
-    private final Class<T> clazz;
+    private final Class<? extends TableEntity> tableEntityClass;
     private final AccessibleObject primaryKeyMember;
-    private final Class<K> primaryKeyDataType;
+    private final Class<PK> primaryKeyDataType;
     private final Map<Field, String> fieldToColumnName;
     private final List<Field> nonPkFields;
     private final List<Field> pkFields;
@@ -41,12 +45,14 @@ public class Table<T extends TableEntity, K> {
     protected final String updatePrimaryKeyQuery;
 
     @SuppressWarnings("unchecked")
-    public Table(Class<T> clazz) {
-        this.clazz = clazz;
-        this.tableName = TableUtils.getTableName(clazz);
+    public Table(Class<TE> tableEntityClass) {
+
+        this.tableEntityClass = tableEntityClass;
+
+        this.tableName = TableUtils.getTableName(this.tableEntityClass);
 
         // map fields → column names
-        this.fieldToColumnName = TableUtils.mapFieldToColumnNames(clazz);
+        this.fieldToColumnName = TableUtils.mapFieldToColumnNames(this.tableEntityClass);
 
         // invert map: column name -> field (used for insert binding)
         this.columnToField = new HashMap<>();
@@ -55,8 +61,8 @@ public class Table<T extends TableEntity, K> {
         }
 
         // pick up the @PrimaryKey (field or zero-arg method)
-        this.primaryKeyMember = TableUtils.getPrimaryKeyMember(clazz);
-        this.primaryKeyDataType = (Class<K>) TableUtils.getPrimaryKeyType(clazz);
+        this.primaryKeyMember = TableUtils.getPrimaryKeyMember(this.tableEntityClass);
+        this.primaryKeyDataType = (Class<PK>) TableUtils.getPrimaryKeyType(this.tableEntityClass);
 
         // figure out which Fields back the PK for SQL binding
         if (primaryKeyMember instanceof Field) {
@@ -74,7 +80,7 @@ public class Table<T extends TableEntity, K> {
         // Compute insert column list. If this entity uses joined-table inheritance and does not
         // declare a local PK field, include the parent's PK column so we can mirror its value.
         this.insertColumns = new ArrayList<>(fieldToColumnName.values());
-        boolean inherits = isInheritanceEntity(clazz);
+        boolean inherits = isInheritanceEntity(tableEntityClass);
         if (inherits) {
             try {
                 String pkCol = getPrimaryKeyColumnName();
@@ -87,15 +93,15 @@ public class Table<T extends TableEntity, K> {
             }
         }
 
-        this.insertQuery = TableUtils.buildInsertQuery(
+        this.insertQuery =  QueryutibuildInsertQuery(
                 tableName,
                 insertColumns
         );
-        this.updateQuery = TableUtils.buildUpdateQuery(clazz);
+        this.updateQuery =  TableUtils.buildUpdateQuery(tableEntityClass);
 
         // optional: only available for single-column field-based PKs
         this.updatePrimaryKeyQuery = (this.primaryKeyMember instanceof Field)
-                ? TableUtils.buildUpdatePrimaryKeyQuery(clazz)
+                ?  TableUtils.buildUpdatePrimaryKeyQuery(tableEntityClass)
                 : null;
     }
 
@@ -131,10 +137,10 @@ public class Table<T extends TableEntity, K> {
 
         // append ORDER BY if requested
         if (orderByField != null) {
-            if (!orderByField.getDeclaringClass().equals(clazz)) {
+            if (!orderByField.getDeclaringClass().equals(tableEntityClass)) {
                 throw new IllegalArgumentException(
                         "Order-by field " + orderByField.getName() +
-                                " not from " + clazz.getName());
+                                " not from " + tableEntityClass.getName());
             }
             String orderCol = fieldToColumnName.get(orderByField);
             if (orderCol == null) {
@@ -151,88 +157,68 @@ public class Table<T extends TableEntity, K> {
         return sql.toString();
     }
 
-    public void prepareInsertStatement(PreparedStatement ps, T entity) throws SQLException {
-        try {
-            int idx = 1;
-
-            Object parentPkValue = null;
-            String parentPkColumn = null;
-            boolean inherits = isInheritanceEntity(clazz);
-            if (inherits) {
-                try {
-                    parentPkColumn = getPrimaryKeyColumnName();
-                    parentPkValue = TableUtils.getPrimaryKeyValue(entity);
-                } catch (UnsupportedOperationException ignored) {
-                    // composite/method-based PK not handled here
-                }
-            }
-
-            for (String column : insertColumns) {
-                Field field = columnToField.get(column);
-                if (field == null) {
-                    // Not a local field — assume it's the mirrored parent PK column
-                    if (inherits && parentPkColumn != null && parentPkColumn.equals(column)) {
-                        ps.setObject(idx++, parentPkValue);
-                        continue;
-                    }
-                    throw new IllegalStateException(
-                            "No field mapped for column '" + column + "' in entity '" + clazz.getSimpleName() + "'.");
-                }
-
-                field.setAccessible(true);
-                if (field.isAnnotationPresent(ForeignKey.class)) {
-                    Object refObj = field.get(entity);
-                    Object fkValue = (refObj == null) ? null : TableUtils.getPrimaryKeyValue(refObj);
-                    ps.setObject(idx++, fkValue);
-                } else {
-                    Object value = field.get(entity);
-                    if (value instanceof Map) {
-                        String json = objectMapper.writeValueAsString(value);
-                        ps.setObject(idx++, json, Types.OTHER);
-                    } else {
-                        ps.setObject(idx++, value);
-                    }
-                }
-            }
-        } catch (IllegalAccessException | JsonProcessingException e) {
-            throw new RuntimeException("Failed to access or serialize field", e);
-        }
+    public Class<? extends TableEntity> getTableEntityClass() {
+        return tableEntityClass;
     }
 
-    public void prepareUpdateStatement(PreparedStatement ps, T entity) throws SQLException {
-        try {
-            int idx = 1;
-            // 1) SET clauses
-            for (Field field : nonPkFields) {
-                field.setAccessible(true);
-                if (field.isAnnotationPresent(ForeignKey.class)) {
-                    Object refObj = field.get(entity);
-                    Object fkValue = (refObj == null) ? null : TableUtils.getPrimaryKeyValue(refObj);
-                    ps.setObject(idx++, fkValue);
-                } else {
-                    Object value = field.get(entity);
-                    if (value instanceof Map) {
-                        String json = objectMapper.writeValueAsString(value);
-                        ps.setObject(idx++, json, Types.OTHER);
-                    } else {
-                        ps.setObject(idx++, value);
-                    }
-                }
+    public void prepareInsertStatement(PreparedStatement ps, TE entity) throws SQLException {
+        EntityValueResolver resolver = new EntityValueResolver(objectMapper);
+
+        EntityColumnValuesUtil.InheritanceMirror mirror = null;
+        if (isInheritanceEntity(tableEntityClass)) {
+            try {
+                String parentPkColumn = getPrimaryKeyColumnName();
+                Object parentPkValue =  TableUtils.getPrimaryKeyValue(entity);
+                mirror = new EntityColumnValuesUtil.InheritanceMirror(parentPkColumn, parentPkValue);
+            } catch (UnsupportedOperationException ignored) {
+                // composite/method-based PK not handled here
             }
-            // 2) WHERE clauses (all PK fields, in declaration order)
-            for (Field pkField : pkFields) {
-                pkField.setAccessible(true);
-                ps.setObject(idx++, pkField.get(entity));
-            }
-        } catch (IllegalAccessException | JsonProcessingException e) {
-            throw new RuntimeException("Failed to access or serialize field", e);
         }
+
+        List<Object> values = EntityColumnValuesUtil.valuesForColumns(
+                entity,
+                insertColumns,
+                columnToField,
+                mirror,
+                resolver
+        );
+
+        StatementValueUtil.setStatementValues(ps, values);
+    }
+
+    public void prepareUpdateStatement(PreparedStatement ps, TE entity) throws SQLException {
+        EntityValueResolver resolver = new EntityValueResolver(objectMapper);
+
+        // 1) SET values (nonPkFields in the exact same order used to build the UPDATE query)
+        List<Object> setValues = new java.util.ArrayList<>(nonPkFields.size());
+        for (Field f : nonPkFields) {
+            EntityValueResolver.ResolvedValue rv = resolver.resolve(f, entity);
+            setValues.add(rv.value());
+        }
+
+        // 2) WHERE values (pkFields order)
+        List<Object> whereValues = new java.util.ArrayList<>(pkFields.size());
+        for (Field pk : pkFields) {
+            try {
+                pk.setAccessible(true);
+                whereValues.add(pk.get(entity));
+            } catch (IllegalAccessException e) {
+                throw new RuntimeException("Failed to access pk field '" + pk.getName() + "'", e);
+            }
+        }
+
+        // bind them with one shared binder
+        List<Object> all = new java.util.ArrayList<>(setValues.size() + whereValues.size());
+        all.addAll(setValues);
+        all.addAll(whereValues);
+
+        StatementValueUtil.setStatementValues(ps, all);
     }
 
     /**
      * Prepare a statement for updating the primary key value.
      *
-     * Expected SQL shape (see {@link TableUtils#buildUpdatePrimaryKeyQuery(Class)}):
+     * Expected SQL shape (see {@link  TableUtils#buildUpdatePrimaryKeyQuery(Class)}):
      *   UPDATE <table> SET <pkCol> = ? WHERE <pkCol> = ?
      *
      * @param ps          prepared statement created from {@link #getUpdatePrimaryKeyQuery()}
@@ -242,10 +228,9 @@ public class Table<T extends TableEntity, K> {
     public void prepareUpdatePrimaryKeyStatement(PreparedStatement ps, Object newPkValue, Object oldPkValue) throws SQLException {
         if (!(primaryKeyMember instanceof Field)) {
             throw new UnsupportedOperationException(
-                    "Primary key update is only supported for field-based single-column PKs on " + clazz.getName());
+                    "Primary key update is only supported for field-based single-column PKs on " + tableEntityClass.getName());
         }
-        ps.setObject(1, newPkValue);
-        ps.setObject(2, oldPkValue);
+        StatementValueUtil.setStatementValues(ps, List.of(newPkValue, oldPkValue));
     }
 
     // ——————————————————————————————————————————————————————————
@@ -266,17 +251,17 @@ public class Table<T extends TableEntity, K> {
         return hasInheritanceConstructor(clazz);
     }
 
-    public T buildFromTableWildcardQuery(Connection connection, ResultSet rs) throws SQLException {
+    public TE buildFromTableWildcardQuery(Connection connection, ResultSet rs) throws SQLException {
         try {
             // Locate @TableConstructor
-            Constructor<?> constructor = Arrays.stream(clazz.getDeclaredConstructors())
+            Constructor<?> constructor = Arrays.stream(tableEntityClass.getDeclaredConstructors())
                     .filter(c -> c.isAnnotationPresent(TableConstructor.class))
                     .findFirst()
-                    .orElseThrow(() -> new RuntimeException("No @TableConstructor on " + clazz.getName()));
+                    .orElseThrow(() -> new RuntimeException("No @TableConstructor on " + tableEntityClass.getName()));
             constructor.setAccessible(true);
 
             // Child-only @TableColumn fields declared on THIS class (not inherited)
-            Field[] childFields = Arrays.stream(clazz.getDeclaredFields())
+            Field[] childFields = Arrays.stream(tableEntityClass.getDeclaredFields())
                     .filter(f -> f.isAnnotationPresent(TableColumn.class))
                     .toArray(Field[]::new);
 
@@ -285,7 +270,7 @@ public class Table<T extends TableEntity, K> {
             // Detect inheritance-aware constructor purely from signature
             boolean hasParentParam = params.length == childFields.length + 1
                     && TableEntity.class.isAssignableFrom(params[0].getType())
-                    && isInheritanceEntity(clazz);
+                    && isInheritanceEntity(tableEntityClass);
 
 
             // Validate arity
@@ -314,11 +299,11 @@ public class Table<T extends TableEntity, K> {
                 args[offset + i] = readFieldFromResultSet(connection, rs, childFields[i]);
             }
 
-            return clazz.cast(constructor.newInstance(args));
+            return tableEntityClass.cast(constructor.newInstance(args));
 
         } catch (Exception e) {
             if (e instanceof SQLException) throw (SQLException) e;
-            throw new RuntimeException("Failed to create instance of " + clazz.getName(), e);
+            throw new RuntimeException("Failed to create instance of " + tableEntityClass.getName(), e);
         }
     }
 
@@ -333,7 +318,7 @@ public class Table<T extends TableEntity, K> {
             }
             @SuppressWarnings("unchecked")
             Class<? extends TableEntity> refClass = (Class<? extends TableEntity>) type;
-            Class<?> pkType = TableUtils.getPrimaryKeyType(refClass);
+            Class<?> pkType =  TableUtils.getPrimaryKeyType(refClass);
             Object fkId = rs.getObject(column, pkType);
             return (fkId == null) ? null : loadReference(connection, refClass, fkId);
         }
@@ -354,8 +339,8 @@ public class Table<T extends TableEntity, K> {
      * Returns the raw PK value
      */
     @SuppressWarnings("unchecked")
-    public K getPrimaryKey(T entity) {
-        return (K) TableUtils.getPrimaryKeyValue(entity);
+    public PK getPrimaryKey(TE entity) {
+        return (PK)  TableUtils.getPrimaryKeyValue(entity.getClass());
     }
 
     /**
@@ -396,7 +381,7 @@ public class Table<T extends TableEntity, K> {
     public String getUpdatePrimaryKeyQuery() {
         if (updatePrimaryKeyQuery == null) {
             throw new UnsupportedOperationException(
-                    "Primary key update query not available for this table (method-based/composite PK): " + clazz.getName());
+                    "Primary key update query not available for this table (method-based/composite PK): " + tableEntityClass.getName());
         }
         return updatePrimaryKeyQuery;
     }
@@ -432,7 +417,7 @@ public class Table<T extends TableEntity, K> {
 
     @Override
     public String toString() {
-        return "Table[" + clazz.getSimpleName() + "]:\n" +
+        return "Table[" + tableEntityClass.getSimpleName() + "]:\n" +
                 "  Table name: '" + tableName + "'\n" +
                 "  PK member: " + primaryKeyMember + " (" +
                 primaryKeyDataType.getSimpleName() + ")\n" +
@@ -509,7 +494,7 @@ public class Table<T extends TableEntity, K> {
         String qualifiedCol;
 
         // Base-entity field
-        if (f.getDeclaringClass().equals(clazz)) {
+        if (f.getDeclaringClass().equals(tableEntityClass)) {
             String col = fieldToColumnName.get(f);
             if (col == null) {
                 throw new IllegalArgumentException(
@@ -520,13 +505,13 @@ public class Table<T extends TableEntity, K> {
             // Joined-entity field (only allowed for SELECT queries)
             if (!allowJoinFilters) {
                 throw new IllegalArgumentException(
-                        "Field " + f.getName() + " not from " + clazz.getName());
+                        "Field " + f.getName() + " not from " + tableEntityClass.getName());
             }
 
             JoinInfo join = joins.get(f.getDeclaringClass());
             if (join == null) {
                 throw new IllegalArgumentException(
-                        "Field " + f.getName() + " not from " + clazz.getName() + " and no @ForeignKey join found for " +
+                        "Field " + f.getName() + " not from " + tableEntityClass.getName() + " and no @ForeignKey join found for " +
                                 f.getDeclaringClass().getName());
             }
 
@@ -604,7 +589,7 @@ public class Table<T extends TableEntity, K> {
      *
      * <p>Rules:</p>
      * <ul>
-     *   <li>A filter field declared on {@code clazz} uses no JOIN.</li>
+     *   <li>A filter field declared on {@code tableEntityClass} uses no JOIN.</li>
      *   <li>A filter field declared on some other class {@code R} is supported if (and only if)
      *       this entity has exactly one {@link ForeignKey} field whose type is {@code R}.</li>
      *   <li>Only single-column (field-based) PKs are supported for join targets. Composite/method-based PKs will throw.</li>
@@ -622,7 +607,7 @@ public class Table<T extends TableEntity, K> {
             if (f == null) continue;
 
             Class<?> declaring = f.getDeclaringClass();
-            if (declaring.equals(clazz)) {
+            if (declaring.equals(tableEntityClass)) {
                 continue;
             }
 
@@ -641,18 +626,18 @@ public class Table<T extends TableEntity, K> {
             Class<? extends TableEntity> refClass = (Class<? extends TableEntity>) declaring;
 
             // Find the local @ForeignKey field that points to this refClass
-            List<Field> matchingFkFields = Arrays.stream(clazz.getDeclaredFields())
+            List<Field> matchingFkFields = Arrays.stream(tableEntityClass.getDeclaredFields())
                     .filter(local -> local.isAnnotationPresent(ForeignKey.class))
                     .filter(local -> local.getType().equals(refClass))
                     .toList();
 
             if (matchingFkFields.isEmpty()) {
                 throw new IllegalArgumentException(
-                        "No @ForeignKey field on " + clazz.getName() + " points to " + refClass.getName());
+                        "No @ForeignKey field on " + tableEntityClass.getName() + " points to " + refClass.getName());
             }
             if (matchingFkFields.size() > 1) {
                 throw new IllegalArgumentException(
-                        "Multiple @ForeignKey fields on " + clazz.getName() + " point to " + refClass.getName() +
+                        "Multiple @ForeignKey fields on " + tableEntityClass.getName() + " point to " + refClass.getName() +
                                 "; join target is ambiguous");
             }
 
@@ -664,7 +649,7 @@ public class Table<T extends TableEntity, K> {
             }
 
             // Resolve referenced table name + PK column (single-column PK only)
-            String refTableName = TableUtils.getTableName(refClass);
+            String refTableName =  TableUtils.getTableName(refClass);
             Table<? extends TableEntity, Object> refTable = new Table<>(refClass);
             String refPkColumn;
             try {
@@ -674,7 +659,7 @@ public class Table<T extends TableEntity, K> {
                         "Joining on composite/method-based PK is not supported yet for " + refClass.getName(), e);
             }
 
-            Map<Field, String> refFieldToColumn = TableUtils.mapFieldToColumnNames(refClass);
+            Map<Field, String> refFieldToColumn =  TableUtils.mapFieldToColumnNames(refClass);
 
             joins.put(refClass, new JoinInfo(refTableName, baseFkColumn, refPkColumn, refFieldToColumn));
         }

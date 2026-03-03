@@ -14,7 +14,7 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.Arrays;
 
-import static io.github.david.auk.fluid.jdbc.components.tables.TableUtils.getPrimaryKeyMember;
+import static io.github.david.auk.fluid.jdbc.components.tables.TableUtilsOld.getPrimaryKeyMember;
 
 /**
  * Marker interface for classes that can be used with {@link Dao} and {@link ValidatedBody}.
@@ -27,7 +27,8 @@ public interface TableEntity {
      * Validates that a class is a well-formed TableEntity.
      * @param clazz the entity class to validate
      */
-    static void validateEntity(Class<?> clazz) {
+    static <T extends TableEntity> void validateEntity(Class<T> clazz) {
+
         // Check for @TableName
         if (!clazz.isAnnotationPresent(TableName.class)) {
             throw new IllegalStateException("Entity class " + clazz.getName() + " is missing @TableName");

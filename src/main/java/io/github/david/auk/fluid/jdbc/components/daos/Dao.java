@@ -9,7 +9,7 @@ import io.github.david.auk.fluid.jdbc.components.daos.querying.operator.SingleVa
 import io.github.david.auk.fluid.jdbc.components.daos.querying.operator.ValueOperator;
 import io.github.david.auk.fluid.jdbc.components.tables.Table;
 import io.github.david.auk.fluid.jdbc.components.tables.TableEntity;
-import io.github.david.auk.fluid.jdbc.components.tables.TableUtils;
+import io.github.david.auk.fluid.jdbc.components.tables.TableUtilsOld;
 
 import java.lang.reflect.Field;
 import java.sql.*;
@@ -81,8 +81,8 @@ public class Dao<TE extends TableEntity, PK> implements AutoCloseable {
 
         try (PreparedStatement ps = connection.prepareStatement(query)) {
             Object bindValue = isData;
-            if (isData instanceof TableEntity) {
-                bindValue = TableUtils.getPrimaryKeyValue(isData);
+            if (isData instanceof TableEntity isEntity) {
+                bindValue = TableUtilsOld.getPrimaryKeyValue(isEntity);
             }
             ps.setObject(1, bindValue);
             try (ResultSet rs = ps.executeQuery()) {
@@ -197,9 +197,9 @@ public class Dao<TE extends TableEntity, PK> implements AutoCloseable {
             PreparedStatement preparedStatement = connection.prepareStatement(query);
             // Unwrap TableEntity keys to their actual PK value if necessary
             Object bindValue = primaryKey;
-            if (primaryKey instanceof TableEntity) { // If primaryKey is a foreign object
+            if (primaryKey instanceof TableEntity foreignPrimaryKey) { // If primaryKey is a foreign object
                 // Get and use the foreign object's pk (this.pk = foreignObject.pk)
-                bindValue = TableUtils.getPrimaryKeyValue(primaryKey);
+                bindValue = TableUtilsOld.getPrimaryKeyValue(foreignPrimaryKey);
             }
             preparedStatement.setObject(1, bindValue);
             ResultSet resultSet = preparedStatement.executeQuery();

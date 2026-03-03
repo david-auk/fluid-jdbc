@@ -11,9 +11,9 @@ import java.lang.reflect.Method;
 import java.util.*;
 import java.util.stream.Collectors;
 
-public class TableUtils {
+public class TableUtilsOld {
 
-    public static <T> String getTableName(Class<T> clazz) {
+    public static <T extends TableEntity> String getTableName(Class<T> clazz) {
         TableName annotation = clazz.getAnnotation(TableName.class);
         return annotation != null ? annotation.value() : clazz.getSimpleName().toLowerCase();
     }
@@ -31,7 +31,7 @@ public class TableUtils {
      *  - If @TableInherits is present, the class must actually extend the declared base.
      */
     // TODO Subdivide logic into smaller methods
-    public static AccessibleObject getPrimaryKeyMember(Class<?> clazz) {
+    public static <T extends TableEntity> AccessibleObject getPrimaryKeyMember(Class<T> clazz) {
         // 1) If @TableInherits is present, the entity must actually extend the declared base class.
         // This check must run even when the entity declares its own @PrimaryKey.
         Class<?> inheritedBase = null;
@@ -104,7 +104,12 @@ public class TableUtils {
 
         // 6) Try via parent entity's PK if @TableInherits is present
         if (inheritedBase != null) {
-            return getPrimaryKeyMember(inheritedBase);
+            // If the base type is also a TableEntity, delegate PK resolution to it.
+            if (TableEntity.class.isAssignableFrom(inheritedBase)) {
+                @SuppressWarnings("unchecked")
+                Class<? extends TableEntity> inheritedEntity = (Class<? extends TableEntity>) inheritedBase;
+                return getPrimaryKeyMember(inheritedEntity);
+            }
         }
 
         throw new IllegalStateException(
@@ -114,7 +119,7 @@ public class TableUtils {
     /**
      * Return the Class<?> that the @PrimaryKey says this key is.
      */
-    public static Class<?> getPrimaryKeyType(Class<?> clazz) {
+    public static <T extends TableEntity> Class<?> getPrimaryKeyType(Class<T> clazz) {
         AccessibleObject pkMember = getPrimaryKeyMember(clazz);
         if (pkMember instanceof Field) {
             return ((Field) pkMember).getType();
@@ -127,7 +132,7 @@ public class TableUtils {
      * Resolve the physical column name for the primary key, following inheritance if needed.
      * Only supports field-based primary keys; method-based PKs cannot reliably yield a column name.
      */
-    public static String getPrimaryKeyColumnName(Class<?> clazz) {
+    public static <T extends TableEntity> String getPrimaryKeyColumnName(Class<T> clazz) {
         AccessibleObject pkMember = getPrimaryKeyMember(clazz);
         if (pkMember instanceof Field f) {
             TableColumn tc = f.getAnnotation(TableColumn.class);
@@ -144,7 +149,7 @@ public class TableUtils {
      * Compute/get the actual PK value from an instance,
      * whether it’s stored in a field or computed by a method.
      */
-    public static Object getPrimaryKeyValue(Object instance) {
+    public static Object getPrimaryKeyValue(TableEntity instance) {
         AccessibleObject pkMember = getPrimaryKeyMember(instance.getClass());
         try {
             if (pkMember instanceof Field) {
@@ -175,7 +180,7 @@ public class TableUtils {
      * • If the PK is a field, exclude it.
      * • If the PK is a method, include all @TableField fields.
      */
-    public static List<Field> getNonPrimaryKeyFields(Class<?> clazz) {
+    public static <T extends TableEntity> List<Field> getNonPrimaryKeyFields(Class<T> clazz) {
         AccessibleObject pkMember = getPrimaryKeyMember(clazz);
 
         return Arrays.stream(clazz.getDeclaredFields())
@@ -200,7 +205,7 @@ public class TableUtils {
      *  - if PK is a single field, does "WHERE pk = ?"
      *  - if PK is method-based, does "WHERE col1 = ? AND col2 = ? …"
      */
-    public static String buildUpdateQuery(Class<?> clazz) {
+    public static <T extends TableEntity> String buildUpdateQuery(Class<T> clazz) {
         String tableName = getTableName(clazz);
         Map<Field, String> fieldToCol = mapFieldToColumnNames(clazz);
 
@@ -240,7 +245,7 @@ public class TableUtils {
      * Resulting SQL:
      *   UPDATE {@code table} SET {@code pkCol} = ? WHERE {@code pkCol} = ?
      */
-    public static String buildUpdatePrimaryKeyQuery(Class<?> clazz) {
+    public static <T extends TableEntity> String buildUpdatePrimaryKeyQuery(Class<T> clazz) {
         String tableName = getTableName(clazz);
 
         AccessibleObject pkMember = getPrimaryKeyMember(clazz);
