@@ -31,7 +31,6 @@ public final class TableEntityRulesProcessor extends AbstractProcessor {
             "io.github.david.auk.fluid.jdbc.annotations.table.field.TableColumn";
 
     private Types types;
-    private Elements elements;
     private Messager messager;
 
     private TypeMirror tableEntityType;
@@ -40,7 +39,7 @@ public final class TableEntityRulesProcessor extends AbstractProcessor {
     public synchronized void init(ProcessingEnvironment processingEnv) {
         super.init(processingEnv);
         this.types = processingEnv.getTypeUtils();
-        this.elements = processingEnv.getElementUtils();
+        Elements elements = processingEnv.getElementUtils();
         this.messager = processingEnv.getMessager();
 
         TypeElement te = elements.getTypeElement(FQN_TABLE_ENTITY);
@@ -69,7 +68,7 @@ public final class TableEntityRulesProcessor extends AbstractProcessor {
         }
 
         // @TableConstructor required on at least one ctor
-        if (!hasAnnotatedConstructor(clazz, FQN_TABLE_CONSTRUCTOR)) {
+        if (!hasAnnotatedConstructor(clazz)) {
             error(clazz, "Entity class %s must have a constructor annotated @TableConstructor", clazz.getQualifiedName());
         }
 
@@ -165,9 +164,9 @@ public final class TableEntityRulesProcessor extends AbstractProcessor {
         }
     }
 
-    private boolean hasAnnotatedConstructor(TypeElement clazz, String annotationFqn) {
+    private boolean hasAnnotatedConstructor(TypeElement clazz) {
         for (Element e : clazz.getEnclosedElements()) {
-            if (e.getKind() == ElementKind.CONSTRUCTOR && hasAnnotation(e, annotationFqn)) {
+            if (e.getKind() == ElementKind.CONSTRUCTOR && hasAnnotation(e, TableEntityRulesProcessor.FQN_TABLE_CONSTRUCTOR)) {
                 return true;
             }
         }

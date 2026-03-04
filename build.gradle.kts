@@ -47,7 +47,11 @@ repositories {
 dependencies {
     api(kotlin("stdlib"))
 
+    // If entities are in this module, apply to itself:
     annotationProcessor(project(":fluid-jdbc-processor"))
+
+    // If you also compile tests with entities:
+    testAnnotationProcessor(project(":fluid-jdbc-processor"))
 
     testImplementation(kotlin("test"))
     testImplementation("org.junit.jupiter:junit-jupiter:5.11.0")
