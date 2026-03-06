@@ -1,12 +1,10 @@
 package io.github.david.auk.fluid.jdbc.components.tables.utils.query.sql.clause;
 
-import io.github.david.auk.fluid.jdbc.annotations.table.field.ForeignKey;
-import io.github.david.auk.fluid.jdbc.components.daos.querying.FilterCriterion.FilterCriterion;
+import io.github.david.auk.fluid.jdbc.components.daos.querying.filters.FilterCriterion;
 import io.github.david.auk.fluid.jdbc.components.daos.querying.operator.*;
 import io.github.david.auk.fluid.jdbc.components.tables.TableEntity;
 import io.github.david.auk.fluid.jdbc.components.tables.utils.TableUtils;
 
-import java.lang.reflect.Field;
 import java.util.Collection;
 import java.util.List;
 import java.util.StringJoiner;
@@ -16,20 +14,18 @@ public final class WhereClause {
     private WhereClause() {}
 
     public static String build(
-            Class<? extends TableEntity> baseEntityClass,
-            List<FilterCriterion> filterCriteria
+            List<FilterCriterion<?, ?>> filterCriteria
     ) {
         if (filterCriteria == null || filterCriteria.isEmpty()) {
             return "";
         }
 
         // Build the necessary join statement for this query that might use foreign tables
-        String joinSql = JoinClause.build(baseEntityClass, filterCriteria);
+        String joinSql = JoinClause.build(filterCriteria);
 
         StringJoiner joiner = new StringJoiner(" AND ");
-        for (FilterCriterion filterCriterion : filterCriteria) {
+        for (FilterCriterion<?, ?> filterCriterion : filterCriteria) {
             joiner.add(buildPredicate(
-                    baseEntityClass,
                     filterCriterion
             ));
         }
@@ -48,11 +44,9 @@ public final class WhereClause {
     }
 
     private static String buildPredicate(
-            Class<? extends TableEntity> baseEntityClass,
-            FilterCriterion filterCriterion
+            FilterCriterion<?, ?> filterCriterion
     ) {
         String qualifiedCol = qualifyColumn(
-                baseEntityClass,
                 filterCriterion
         );
 
@@ -73,11 +67,10 @@ public final class WhereClause {
     }
 
     private static String qualifyColumn(
-            Class<? extends TableEntity> baseEntityClass,
-            FilterCriterion filterCriterion
+            FilterCriterion<? extends TableEntity, ?> filterCriterion
     ) {
-        String tableName = TableUtils.getTableName(baseEntityClass);
-        String columnName = TableUtils.getColumnName(filterCriterion.getField());
+        String tableName = TableUtils.getTableName(filterCriterion.getFilterTypedField().typedField().owner());
+        String columnName = TableUtils.getColumnName(filterCriterion.getFilterTypedField().typedField());
 
         return tableName + "." + columnName;
     }

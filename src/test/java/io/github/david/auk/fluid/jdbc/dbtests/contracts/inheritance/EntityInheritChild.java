@@ -12,7 +12,7 @@ import java.util.Objects;
 @TableInherits(EntityInheritBase.class)
 public class EntityInheritChild extends EntityInheritBase implements TableEntity {
 
-    @TableColumn(name = "value_int")
+    @TableColumn(columnName = "value_int")
     private final Integer valueInt;
 
     @TableConstructor

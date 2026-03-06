@@ -14,7 +14,7 @@ public interface ContractForeignKey extends ContractInterface {
         // Requirement #2: fully hydrated OR null.
         // If not null, all non-nullable fields in EntityForeign must be present.
         if (local.foreignEntity() != null) {
-            assertNotNull(local.foreignEntity().name(), "hydrated FK must have name");
+            assertNotNull(local.foreignEntity().name(), "hydrated FK must have columnName");
             assertNotNull(local.foreignEntity().value(), "hydrated FK must have value (not a PK-only stub)");
         }
     }

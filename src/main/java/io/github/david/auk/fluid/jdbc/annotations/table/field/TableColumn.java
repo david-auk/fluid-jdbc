@@ -9,5 +9,5 @@ import java.lang.annotation.Target;
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.FIELD)
 public @interface TableColumn {
-    String name() default "";            // Optional override for column name
+    String columnName() default "";            // Optional override for column columnName
 }

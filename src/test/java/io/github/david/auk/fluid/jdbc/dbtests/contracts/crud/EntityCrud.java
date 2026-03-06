@@ -12,13 +12,13 @@ import java.util.Objects;
 public record EntityCrud(
         @PrimaryKey @TableColumn String id,
         @TableColumn String name,
-        @TableColumn(name = "value_int") Integer valueInt
+        @TableColumn(columnName = "value_int") Integer valueInt
 ) implements TableEntity {
 
     @TableConstructor
     public EntityCrud(String id, String name, Integer valueInt) {
         this.id = Objects.requireNonNull(id, "id");
-        this.name = Objects.requireNonNull(name, "name");
+        this.name = Objects.requireNonNull(name, "columnName");
         this.valueInt = Objects.requireNonNull(valueInt, "valueInt");
     }
 }

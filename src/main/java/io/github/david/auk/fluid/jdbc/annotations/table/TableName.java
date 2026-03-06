@@ -8,7 +8,7 @@ import java.lang.annotation.Target;
 // TODO look into:
 //@Target(AnnotationTarget.CLASS)
 //@Retention(AnnotationRetention.RUNTIME)
-//annotation class Table(val name: String)
+//annotation class Table(val columnName: String)
 
 // TODO Write JAVADOC
 @Target(ElementType.TYPE)

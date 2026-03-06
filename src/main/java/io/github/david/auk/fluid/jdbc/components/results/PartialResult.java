@@ -19,8 +19,8 @@ import java.util.Optional;
  * construct a full entity.
  * <p>
  * Keys are the resolved column names:
- * - If {@link TableColumn#name()} is set, that value is used.
- * - Otherwise the Java field / record component name is used.
+ * - If {@link TableColumn#columnName()} is set, that value is used.
+ * - Otherwise the Java field / record component columnName is used.
  * <p>
  * Values are considered "present" when non-null.
  */
@@ -153,7 +153,7 @@ public class PartialResult<TE extends TableEntity> {
         if (tc == null) {
             return javaName;
         }
-        String annotated = tc.name();
+        String annotated = tc.columnName();
         return (annotated == null || annotated.isBlank()) ? javaName : annotated;
     }
 }

@@ -11,15 +11,15 @@ import java.util.Objects;
 @TableName("foreign_query_entity")
 record EntityQueryForeign(
         @PrimaryKey
-        @TableColumn(name = "id")
+        @TableColumn(columnName = "id")
         String id,
 
-        @TableColumn(name = "name")
+        @TableColumn(columnName = "columnName")
         String name
 ) implements TableEntity {
     @TableConstructor
     public EntityQueryForeign(String id, String name) {
         this.id = Objects.requireNonNull(id, "id");
-        this.name = Objects.requireNonNull(name, "name");
+        this.name = Objects.requireNonNull(name, "columnName");
     }
 }

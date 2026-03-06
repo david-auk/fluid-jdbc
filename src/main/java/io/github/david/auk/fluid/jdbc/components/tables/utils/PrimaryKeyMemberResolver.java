@@ -13,7 +13,7 @@ import java.util.stream.Collectors;
 
 import static io.github.david.auk.fluid.jdbc.components.tables.utils.InheritanceResolver.getParentPrimaryKeyMemberOrNull;
 
-final class PrimaryKeyMemberResolver {
+class PrimaryKeyMemberResolver {
 
     private PrimaryKeyMemberResolver() {}
 

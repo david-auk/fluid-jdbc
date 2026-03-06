@@ -16,7 +16,7 @@ public record EntityForeign(
 
     @TableConstructor
     public EntityForeign(String name, Integer value) {
-        this.name = Objects.requireNonNull(name, "name");
+        this.name = Objects.requireNonNull(name, "columnName");
         this.value = Objects.requireNonNull(value, "value");
     }
 }

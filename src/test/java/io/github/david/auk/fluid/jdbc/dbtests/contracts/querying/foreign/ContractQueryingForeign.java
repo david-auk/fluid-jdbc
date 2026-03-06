@@ -78,7 +78,7 @@ public interface ContractQueryingForeign extends ContractInterface {
                     .where(EntityQueryForeign.class.getDeclaredField("name"), SingleValueOperator.EQUALS, "netherlands")
                     .get();
 
-            assertEquals(2, results.size(), "foreign.name = netherlands should match two local rows");
+            assertEquals(2, results.size(), "foreign.columnName = netherlands should match two local rows");
             assertTrue(results.stream().map(EntityQueryLocal::name).toList().containsAll(List.of("a", "b")),
                     "results should include local rows a and b");
         }
@@ -106,7 +106,7 @@ public interface ContractQueryingForeign extends ContractInterface {
                     .and(EntityQueryLocal.class.getDeclaredField("valueInt"), SingleValueOperator.GREATER_THAN, 10)
                     .get();
 
-            assertEquals(1, results.size(), "foreign.name=netherlands AND valueInt>10 should match one row");
+            assertEquals(1, results.size(), "foreign.columnName=netherlands AND valueInt>10 should match one row");
             assertEquals("b", results.getFirst().name(), "matched row should be b");
         }
     }
@@ -131,7 +131,7 @@ public interface ContractQueryingForeign extends ContractInterface {
                     .where(EntityQueryForeign.class.getDeclaredField("name"), SingleValueOperator.LIKE, "nor%")
                     .get();
 
-            assertEquals(1, results.size(), "foreign.name LIKE nor% should match one row");
+            assertEquals(1, results.size(), "foreign.columnName LIKE nor% should match one row");
             assertEquals("b", results.getFirst().name(), "matched local row should be b");
         }
     }

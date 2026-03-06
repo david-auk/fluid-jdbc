@@ -129,20 +129,20 @@ public class TableUtilsOld {
     }
 
     /**
-     * Resolve the physical column name for the primary key, following inheritance if needed.
-     * Only supports field-based primary keys; method-based PKs cannot reliably yield a column name.
+     * Resolve the physical column columnName for the primary key, following inheritance if needed.
+     * Only supports field-based primary keys; method-based PKs cannot reliably yield a column columnName.
      */
     public static <T extends TableEntity> String getPrimaryKeyColumnName(Class<T> clazz) {
         AccessibleObject pkMember = getPrimaryKeyMember(clazz);
         if (pkMember instanceof Field f) {
             TableColumn tc = f.getAnnotation(TableColumn.class);
-            if (tc != null && !tc.name().isEmpty()) {
-                return tc.name();
+            if (tc != null && !tc.columnName().isEmpty()) {
+                return tc.columnName();
             }
             return f.getName();
         }
         throw new UnsupportedOperationException(
-                "Method-based @PrimaryKey not supported for column-name resolution. Use a field-based PK or provide an explicit mapping.");
+                "Method-based @PrimaryKey not supported for column-columnName resolution. Use a field-based PK or provide an explicit mapping.");
     }
 
     /**
@@ -167,7 +167,7 @@ public class TableUtilsOld {
         for (Field field : clazz.getDeclaredFields()) {
             if (field.isAnnotationPresent(TableColumn.class)) {
                 field.setAccessible(true);
-                String name = field.getAnnotation(TableColumn.class).name();
+                String name = field.getAnnotation(TableColumn.class).columnName();
                 String columnName = name.isEmpty() ? field.getName() : name;
                 map.put(field, columnName);
             }
@@ -256,12 +256,12 @@ public class TableUtilsOld {
             );
         }
 
-        // Resolve PK column name (supports inherited PK fields).
+        // Resolve PK column columnName (supports inherited PK fields).
         // This method only supports field-based PKs; method-based PKs are rejected above.
         String pkCol = getPrimaryKeyColumnName(clazz);
         if (pkCol == null || pkCol.isBlank()) {
             throw new IllegalStateException(
-                    "Primary key field has no resolvable column name: " + pkField.getName());
+                    "Primary key field has no resolvable column columnName: " + pkField.getName());
         }
 
         return String.format(

@@ -12,23 +12,23 @@ import java.util.Objects;
 @TableName("local_query_entity")
 record EntityQueryLocal(
         @PrimaryKey
-        @TableColumn(name = "id")
+        @TableColumn(columnName = "id")
         String id,
 
-        @TableColumn(name = "name")
+        @TableColumn(columnName = "columnName")
         String name,
 
         @ForeignKey
-        @TableColumn(name = "foreign_id")
+        @TableColumn(columnName = "foreign_id")
         EntityQueryForeign foreign,
 
-        @TableColumn(name = "value_int")
+        @TableColumn(columnName = "value_int")
         Integer valueInt
 ) implements TableEntity {
     @TableConstructor
     public EntityQueryLocal(String id, String name, EntityQueryForeign foreign, Integer valueInt) {
         this.id = Objects.requireNonNull(id, "id");
-        this.name = Objects.requireNonNull(name, "name");
+        this.name = Objects.requireNonNull(name, "columnName");
         this.foreign = Objects.requireNonNull(foreign, "foreign");
         this.valueInt = valueInt;
     }

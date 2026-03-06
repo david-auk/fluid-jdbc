@@ -42,15 +42,15 @@ public interface ContractQuerying extends ContractInterface {
      *
      * <p>This set is designed so you can write tests for:</p>
      * <ul>
-     *   <li>equality/inequality on category/name</li>
+     *   <li>equality/inequality on category/columnName</li>
      *   <li>numeric comparisons on valueInt (>, >=, <, <=)</li>
-     *   <li>LIKE / NOT LIKE on name</li>
+     *   <li>LIKE / NOT LIKE on columnName</li>
      *   <li>IN / NOT IN on category</li>
      *   <li>BETWEEN / NOT BETWEEN on valueInt</li>
-     *   <li>IS NULL / IS NOT NULL on nullable columns (name/category)</li>
+     *   <li>IS NULL / IS NOT NULL on nullable columns (columnName/category)</li>
      * </ul>
      *
-     * <p>Note: this dataset includes a few <code>null</code> values for <code>name</code> and
+     * <p>Note: this dataset includes a few <code>null</code> values for <code>columnName</code> and
      * <code>category</code>. Your table schema must allow NULLs for these columns if you want
      * to test IS NULL / IS NOT NULL.</p>
      */
@@ -77,7 +77,7 @@ public interface ContractQuerying extends ContractInterface {
         rows.add(newEntity("delta", "D", 5, true));
         rows.add(newEntity("epsilon", "E", 101, true));
 
-        // NULL coverage for IS NULL / IS NOT NULL (schema now allows name/category NULL)
+        // NULL coverage for IS NULL / IS NOT NULL (schema now allows columnName/category NULL)
         rows.add(newEntity(null, "N", 7, true));
         rows.add(newEntity("null-category", null, 8, false));
 
@@ -177,7 +177,7 @@ public interface ContractQuerying extends ContractInterface {
 
             // Expect: alpha, alpha-2, alphabet, alpha-max
             List<EntityQuerying> results = new QueryBuilder<>(dao)
-                    .where(field("name"), SingleValueOperator.LIKE, "alpha%")
+                    .where(field("columnName"), SingleValueOperator.LIKE, "alpha%")
                     .get();
 
             assertEquals(4, results.size(), "alpha% should match alpha, alpha-2, alphabet, alpha-max");
@@ -191,7 +191,7 @@ public interface ContractQuerying extends ContractInterface {
             populate(dao);
 
             List<EntityQuerying> results = new QueryBuilder<>(dao)
-                    .where(field("name"), SingleValueOperator.LIKE, "%max%")
+                    .where(field("columnName"), SingleValueOperator.LIKE, "%max%")
                     .get();
 
             assertEquals(2, results.size(), "%max% should match exactly two rows in the unified dataset");
@@ -276,7 +276,7 @@ public interface ContractQuerying extends ContractInterface {
             populate(dao);
 
             EntityQuerying result = new QueryBuilder<>(dao)
-                    .where(field("name"), SingleValueOperator.EQUALS, "beta")
+                    .where(field("columnName"), SingleValueOperator.EQUALS, "beta")
                     .getUnique();
 
             assertNotNull(result, "getUnique should return the entity when exactly one result exists");
@@ -376,14 +376,14 @@ public interface ContractQuerying extends ContractInterface {
         try (Dao<EntityQuerying, String> dao = dao(EntityQuerying.class, String.class)) {
             populate(dao);
 
-            // Avoid NULL semantics by explicitly requiring name IS NOT NULL.
+            // Avoid NULL semantics by explicitly requiring columnName IS NOT NULL.
             List<EntityQuerying> results = new QueryBuilder<>(dao)
-                    .where(field("name"), NoValueOperator.IS_NOT_NULL)
-                    .and(field("name"), SingleValueOperator.NOT_LIKE, "alpha%")
+                    .where(field("columnName"), NoValueOperator.IS_NOT_NULL)
+                    .and(field("columnName"), SingleValueOperator.NOT_LIKE, "alpha%")
                     .get();
 
             assertTrue(results.stream().allMatch(e -> e.name() != null && !e.name().startsWith("alpha")),
-                    "all results must have a non-null name that does not start with 'alpha'");
+                    "all results must have a non-null columnName that does not start with 'alpha'");
         }
     }
 
@@ -469,11 +469,11 @@ public interface ContractQuerying extends ContractInterface {
             populate(dao);
 
             List<EntityQuerying> results = new QueryBuilder<>(dao)
-                    .where(field("name"), NoValueOperator.IS_NULL)
+                    .where(field("columnName"), NoValueOperator.IS_NULL)
                     .get();
 
-            assertEquals(1, results.size(), "name IS NULL should match exactly one row");
-            assertNull(results.getFirst().name(), "matched row must have name=null");
+            assertEquals(1, results.size(), "columnName IS NULL should match exactly one row");
+            assertNull(results.getFirst().name(), "matched row must have columnName=null");
         }
     }
 

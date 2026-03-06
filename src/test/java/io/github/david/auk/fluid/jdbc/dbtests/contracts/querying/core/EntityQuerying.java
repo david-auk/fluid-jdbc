@@ -15,7 +15,7 @@ import java.util.Objects;
  * <p>Intended query coverage:</p>
  * <ul>
  *   <li>Equality lookup: {@code id}, {@code category}</li>
- *   <li>Text queries: {@code name} (LIKE / prefix / contains)</li>
+ *   <li>Text queries: {@code columnName} (LIKE / prefix / contains)</li>
  *   <li>Range queries + ordering: {@code valueInt}</li>
  *   <li>Boolean filtering: {@code enabled}</li>
  * </ul>
@@ -25,7 +25,7 @@ public record EntityQuerying(
         @PrimaryKey @TableColumn String id,
         @TableColumn @Nullable String name,
         @TableColumn @Nullable String category,
-        @TableColumn(name = "value_int") Integer valueInt,
+        @TableColumn(columnName = "value_int") Integer valueInt,
         @TableColumn Boolean enabled
 ) implements TableEntity {
 

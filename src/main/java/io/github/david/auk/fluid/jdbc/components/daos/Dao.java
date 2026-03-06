@@ -2,7 +2,7 @@ package io.github.david.auk.fluid.jdbc.components.daos;
 
 import io.github.david.auk.fluid.jdbc.annotations.table.field.UniqueColumn;
 import io.github.david.auk.fluid.jdbc.components.Database;
-import io.github.david.auk.fluid.jdbc.components.daos.querying.FilterCriterion.FilterCriterion;
+import io.github.david.auk.fluid.jdbc.components.daos.querying.filters.FilterCriterion;
 import io.github.david.auk.fluid.jdbc.components.daos.querying.operator.NoValueOperator;
 import io.github.david.auk.fluid.jdbc.components.daos.querying.operator.Operator;
 import io.github.david.auk.fluid.jdbc.components.daos.querying.operator.SingleValueOperator;
@@ -10,6 +10,11 @@ import io.github.david.auk.fluid.jdbc.components.daos.querying.operator.ValueOpe
 import io.github.david.auk.fluid.jdbc.components.tables.Table;
 import io.github.david.auk.fluid.jdbc.components.tables.TableEntity;
 import io.github.david.auk.fluid.jdbc.components.tables.TableUtilsOld;
+import io.github.david.auk.fluid.jdbc.components.tables.utils.TableUtils;
+import io.github.david.auk.fluid.jdbc.components.tables.utils.query.sql.factories.InsertQueryFactory;
+import io.github.david.auk.fluid.jdbc.components.tables.utils.query.sql.factories.SelectQueryFactory;
+import io.github.david.auk.fluid.jdbc.components.tables.utils.query.sql.factories.UpdateQueryFactory;
+import io.github.david.auk.fluid.jdbc.internal.tables.meta.TypedField;
 
 import java.lang.reflect.Field;
 import java.sql.*;
@@ -46,6 +51,11 @@ public class Dao<TE extends TableEntity, PK> implements AutoCloseable {
         this.table = table;
     }
 
+    // For protected package use
+    Class<TE> getTableEntityClass() {
+        return table.getTableEntityClass();
+    }
+
     /**
      * Checks if a record exists in the table with the given primary key.
      *
@@ -68,9 +78,9 @@ public class Dao<TE extends TableEntity, PK> implements AutoCloseable {
      * @return true if a matching record exists; false otherwise
      * @throws RuntimeException if the field is not annotated with {@link UniqueColumn}
      */
-    public <D> boolean existsByUniqueField(Field uniqueField, D isData) {
+    public <D> boolean existsByUniqueField(TypedField<TE, D> uniqueField, D isData) {
         validateUniqueField(uniqueField);
-        return queryUniqueFieldExists(table.getColumnName(uniqueField), isData);
+        return queryUniqueFieldExists(TableUtils.getColumnName(uniqueField), isData);
     }
 
     private <D> boolean queryUniqueFieldExists(String columnName, D isData) {
@@ -114,9 +124,9 @@ public class Dao<TE extends TableEntity, PK> implements AutoCloseable {
     public void add(TE entity) {
         if (!exists(entity)) {
             try {
-                PreparedStatement addStatement = connection.prepareStatement(table.getInsertQuery());
-                table.prepareInsertStatement(addStatement, entity);
-                addStatement.executeUpdate();
+                PreparedStatement insertStatement = connection.prepareStatement(InsertQueryFactory.build(entity.getClass()));
+                InsertQueryFactory.prepareInsertStatement(insertStatement, entity);
+                insertStatement.executeUpdate();
             } catch (SQLException e) {
                 throw new RuntimeException(e);
             }
@@ -134,8 +144,8 @@ public class Dao<TE extends TableEntity, PK> implements AutoCloseable {
             throw new RuntimeException("Entity does not exist.");
         }
         try {
-            PreparedStatement updateStatement = connection.prepareStatement(table.getUpdateQuery());
-            table.prepareUpdateStatement(updateStatement, entity);
+            PreparedStatement updateStatement = connection.prepareStatement(UpdateQueryFactory.build(entity.getClass()));
+            UpdateQueryFactory.prepareUpdateStatement(updateStatement, entity);
             updateStatement.executeUpdate();
             int rowsAffected = updateStatement.executeUpdate();
             if (rowsAffected == 0) {
@@ -157,24 +167,11 @@ public class Dao<TE extends TableEntity, PK> implements AutoCloseable {
             throw new RuntimeException("Entity does not exist.");
         }
         try {
-            PreparedStatement ps = connection.prepareStatement(table.getUpdatePrimaryKeyQuery());
-
-            // bind new PK and old PK using Table-level helper
-            Object newPk = table.getPrimaryKey(newEntity);
-            Object oldPk = table.getPrimaryKey(oldEntity);
-            table.prepareUpdatePrimaryKeyStatement(ps, newPk, oldPk);
-
-            // Update the PK
-            int rowsAffected = ps.executeUpdate();
+            PreparedStatement updateStatement = connection.prepareStatement(UpdateQueryFactory.build(oldEntity.getClass()));
+            UpdateQueryFactory.prepareUpdateStatement(updateStatement, oldEntity, newEntity);
+            int rowsAffected = updateStatement.executeUpdate();
             if (rowsAffected == 0) {
                 throw new RuntimeException("No rows affected");
-            }
-
-            try {
-                // Update the other fields
-                update(newEntity);
-            } catch (RuntimeException e) { // TODO Differentiate no rows affected Exception from other exceptions for better error handling
-                // Pass because maybe only the PK was updated
             }
         } catch (SQLException e) {
             throw new RuntimeException(e);
@@ -195,6 +192,7 @@ public class Dao<TE extends TableEntity, PK> implements AutoCloseable {
 
         try {
             PreparedStatement preparedStatement = connection.prepareStatement(query);
+
             // Unwrap TableEntity keys to their actual PK value if necessary
             Object bindValue = primaryKey;
             if (primaryKey instanceof TableEntity foreignPrimaryKey) { // If primaryKey is a foreign object
@@ -224,42 +222,20 @@ public class Dao<TE extends TableEntity, PK> implements AutoCloseable {
      * @throws IllegalArgumentException if any Field is invalid for this entity
      */
     List<TE> get(
-            List<FilterCriterion> filters,
+            List<FilterCriterion<?, ?>> filters,
             Field orderByField,
             boolean ascending
     ) {
         // 1) build the SQL
-        String sql = table.buildGetQuery(filters, orderByField, ascending);
+        try {
+            PreparedStatement selectStatement = connection.prepareStatement(SelectQueryFactory.build(table.getTableName(), filters, orderByField, ascending));
+            SelectQueryFactory.prepareSelectStatement(selectStatement, filters);
 
-        try (PreparedStatement ps = connection.prepareStatement(sql)) {
-            // 2) bind parameters in the same order
-            int idx = 1;
-            for (FilterCriterion criterion : filters) {
-
-                Operator operator = criterion.getOperator();
-
-                // Check if we need to set an object in our query
-                if (operator instanceof ValueOperator) {
-                    Object value = criterion.getValue();
-
-                    if (value instanceof Collection<?> collection) {
-
-                        // We fill in the generated (?, ?, ?, ect) by the table class
-                        for (Object item : collection) {
-                            ps.setObject(idx++, item);
-                        }
-                    } else {
-                        ps.setObject(idx++, value);
-                    }
-                }
-            }
-
-            // 3) execute and map to entities
-            try (ResultSet rs = ps.executeQuery()) {
+            try (ResultSet rs = selectStatement.executeQuery()) {
                 return getEntities(rs);
             }
         } catch (SQLException e) {
-            throw new RuntimeException("Error executing query: " + sql, e);
+            throw new RuntimeException(e);
         }
     }
 
@@ -293,7 +269,7 @@ public class Dao<TE extends TableEntity, PK> implements AutoCloseable {
     /**
      * Retrieves a unique entity by its unique field value.
      *
-     * @param uniqueField the field annotated with @UniqueColumn to query
+     * @param typedUniqueField the field annotated with @UniqueColumn to query
      * @param operator the operator to use
      * @param isData the value to match
      * @param <D> the type of the field value
@@ -301,8 +277,11 @@ public class Dao<TE extends TableEntity, PK> implements AutoCloseable {
      * @throws RuntimeException if the field is not annotated with @UniqueColumn
      * @throws IllegalStateException if multiple results are found
      */
-    public <D> TE getUnique(Field uniqueField, SingleValueOperator operator, D isData) {
-        validateUniqueField(uniqueField);
+    public <D> TE getUnique(TypedField<? extends TableEntity, ?> typedUniqueField, SingleValueOperator operator, D isData) {
+        validateUniqueField(typedUniqueField);
+
+        Field uniqueField = typedUniqueField.reflect();
+
         List<TE> results = get(uniqueField, operator, isData);
         return requireUniqueResult(results, uniqueField, String.valueOf(isData));
     }
@@ -310,20 +289,23 @@ public class Dao<TE extends TableEntity, PK> implements AutoCloseable {
     /**
      * Retrieves a unique entity using an operator that does not require a value (e.g. IS NULL).
      *
-     * @param uniqueField the field annotated with @UniqueColumn to query
+     * @param typedUniqueField` the field annotated with @UniqueColumn to query
      * @param operator the operator to use that does not require data
      * @return the unique entity if found; null if no match
      * @throws RuntimeException if the field is not annotated with @UniqueColumn
      * @throws IllegalStateException if multiple results are found
      */
-    public TE getUnique(Field uniqueField, NoValueOperator operator) {
-        validateUniqueField(uniqueField);
+    public TE getUnique(TypedField<? extends TableEntity, ?> typedUniqueField, NoValueOperator operator) {
+        Field uniqueField = typedUniqueField.reflect();
+
+        validateUniqueField(typedUniqueField);
         List<TE> results = get(uniqueField, operator);
         return requireUniqueResult(results, uniqueField, operator.toString());
     }
 
-    private void validateUniqueField(Field uniqueField) {
-        if (!uniqueField.isAnnotationPresent(UniqueColumn.class)) {
+    private void validateUniqueField(TypedField<? extends TableEntity, ?> uniqueTypedField) {
+        Field uniqueField = uniqueTypedField.reflect();
+        if (!uniqueTypedField.reflect().isAnnotationPresent(UniqueColumn.class)) {
             throw new RuntimeException("Field " + uniqueField.getName() + " is not annotated with @UniqueField");
         }
     }

@@ -12,12 +12,12 @@ import java.util.Objects;
 @TableName("local_test_table")
 public record EntityLocal(
         @PrimaryKey @TableColumn String name,
-        @TableColumn(name = "foreign_entity_name") @ForeignKey EntityForeign foreignEntity
+        @TableColumn(columnName = "foreign_entity_name") @ForeignKey EntityForeign foreignEntity
 ) implements TableEntity {
 
     @TableConstructor
     public EntityLocal(String name, EntityForeign foreignEntity) {
-        this.name = Objects.requireNonNull(name, "name");
+        this.name = Objects.requireNonNull(name, "columnName");
         this.foreignEntity = Objects.requireNonNull(foreignEntity, "foreignEntity");
     }
 }

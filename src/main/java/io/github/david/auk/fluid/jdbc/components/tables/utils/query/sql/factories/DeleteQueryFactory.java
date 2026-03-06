@@ -1,8 +1,6 @@
 package io.github.david.auk.fluid.jdbc.components.tables.utils.query.sql.factories;
 
-import io.github.david.auk.fluid.jdbc.components.daos.querying.FilterCriterion.FilterCriterion;
-import io.github.david.auk.fluid.jdbc.components.tables.Table;
-import io.github.david.auk.fluid.jdbc.components.tables.TableEntity;
+import io.github.david.auk.fluid.jdbc.components.daos.querying.filters.FilterCriterion;
 import io.github.david.auk.fluid.jdbc.components.tables.utils.query.sql.clause.*;
 
 import java.util.*;
@@ -21,19 +19,13 @@ public final class DeleteQueryFactory {
      * DELETE FROM base [JOIN ...] [WHERE ...] [ORDER BY ...]
      */
     public static String buildSelectSql(
-            Table<? extends TableEntity, ?> table,
-            List<FilterCriterion> filterCriteria
+            String tableName,
+            List<FilterCriterion<?, ?>> filterCriteria
     ) {
-
-        String tableName = table.getTableName();
-        Class<? extends TableEntity> baseEntityClass = table.getTableEntityClass();
-
-        String whereSql = WhereClause.build(baseEntityClass, filterCriteria);
-
         return String.join(" ",
                 "DELETE",
                 FromClause.build(tableName),
-                whereSql
+                WhereClause.build(filterCriteria)
         ).trim().replaceAll(" +", " ");
     }
 }
