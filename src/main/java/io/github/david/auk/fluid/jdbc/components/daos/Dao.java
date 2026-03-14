@@ -127,7 +127,7 @@ public class Dao<TE extends TableEntity, PK> implements AutoCloseable {
                 PreparedStatement insertStatement = connection.prepareStatement(InsertQueryFactory.build(entity.getClass()));
                 InsertQueryFactory.prepareInsertStatement(insertStatement, entity);
                 insertStatement.executeUpdate();
-            } catch (SQLException e) {
+            } catch (SQLException | IllegalAccessException e) {
                 throw new RuntimeException(e);
             }
         }
@@ -144,7 +144,7 @@ public class Dao<TE extends TableEntity, PK> implements AutoCloseable {
             throw new RuntimeException("Entity does not exist.");
         }
         try {
-            PreparedStatement updateStatement = connection.prepareStatement(UpdateQueryFactory.build(entity.getClass()));
+            PreparedStatement updateStatement = connection.prepareStatement(UpdateQueryFactory.build(entity.getClass(), false));
             UpdateQueryFactory.prepareUpdateStatement(updateStatement, entity);
             updateStatement.executeUpdate();
             int rowsAffected = updateStatement.executeUpdate();
@@ -167,7 +167,7 @@ public class Dao<TE extends TableEntity, PK> implements AutoCloseable {
             throw new RuntimeException("Entity does not exist.");
         }
         try {
-            PreparedStatement updateStatement = connection.prepareStatement(UpdateQueryFactory.build(oldEntity.getClass()));
+            PreparedStatement updateStatement = connection.prepareStatement(UpdateQueryFactory.build(oldEntity.getClass(), true));
             UpdateQueryFactory.prepareUpdateStatement(updateStatement, oldEntity, newEntity);
             int rowsAffected = updateStatement.executeUpdate();
             if (rowsAffected == 0) {

@@ -15,7 +15,7 @@ record EntityQueryLocal(
         @TableColumn(columnName = "id")
         String id,
 
-        @TableColumn(columnName = "columnName")
+        @TableColumn(columnName = "name")
         String name,
 
         @ForeignKey
@@ -28,7 +28,7 @@ record EntityQueryLocal(
     @TableConstructor
     public EntityQueryLocal(String id, String name, EntityQueryForeign foreign, Integer valueInt) {
         this.id = Objects.requireNonNull(id, "id");
-        this.name = Objects.requireNonNull(name, "columnName");
+        this.name = Objects.requireNonNull(name, "name");
         this.foreign = Objects.requireNonNull(foreign, "foreign");
         this.valueInt = valueInt;
     }

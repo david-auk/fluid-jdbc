@@ -14,12 +14,12 @@ record EntityQueryForeign(
         @TableColumn(columnName = "id")
         String id,
 
-        @TableColumn(columnName = "columnName")
+        @TableColumn(columnName = "name")
         String name
 ) implements TableEntity {
     @TableConstructor
     public EntityQueryForeign(String id, String name) {
         this.id = Objects.requireNonNull(id, "id");
-        this.name = Objects.requireNonNull(name, "columnName");
+        this.name = Objects.requireNonNull(name, "name");
     }
 }

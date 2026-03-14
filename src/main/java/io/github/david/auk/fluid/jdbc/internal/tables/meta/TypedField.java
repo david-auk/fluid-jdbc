@@ -76,6 +76,14 @@ public final class TypedField<C, V> {
         return tf;
     }
 
+    public static TypedField<?, ?> of(Field field) {
+        Objects.requireNonNull(field, "field");
+        Class<?> owner = field.getDeclaringClass();
+        Class<?> valueType = field.getType();
+
+        return of(owner, field, valueType);
+    }
+
     public Class<C> owner() {
         return owner;
     }
@@ -108,6 +116,16 @@ public final class TypedField<C, V> {
         }
     }
 
+
+    public V getValue(ResultSet resultSet) throws SQLException {
+        Objects.requireNonNull(resultSet, "resultSet");
+        return resultSet.getObject(name, valueType);
+    }
+
+    public V getValue(C instance) {
+        return get(instance);
+    }
+
     public void set(C instance, V value) {
         try {
             if (instance != null && !owner.isInstance(instance)) {
@@ -121,6 +139,7 @@ public final class TypedField<C, V> {
             throw new RuntimeException(e);
         }
     }
+
 
     private Field resolve() {
         Field f = resolved;

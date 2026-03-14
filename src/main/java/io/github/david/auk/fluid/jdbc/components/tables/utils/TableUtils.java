@@ -2,12 +2,11 @@ package io.github.david.auk.fluid.jdbc.components.tables.utils;
 
 import io.github.david.auk.fluid.jdbc.components.tables.TableEntity;
 import io.github.david.auk.fluid.jdbc.internal.tables.meta.TypedField;
-import jdk.jshell.spi.ExecutionControl;
 
 import java.lang.reflect.AccessibleObject;
 import java.lang.reflect.Field;
+import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 
 public final class TableUtils {
     public static String getTableName(Class<? extends TableEntity> tableEntityClass) {
@@ -18,8 +17,8 @@ public final class TableUtils {
         return PrimaryKeyMemberResolver.getPrimaryKeyMember(tableEntityClass);
     }
 
-    public static Object getPrimaryKeyValue(Class<? extends TableEntity> tableEntityClass) {
-        return PrimaryKeyMemberResolver.getPrimaryKeyValue(tableEntityClass);
+    public static <T extends TableEntity> Object getPrimaryKeyValue(T tableEntity) {
+        return PrimaryKeyMemberResolver.getPrimaryKeyValue(tableEntity);
     }
 
     public static Class<?> getPrimaryKeyType(Class<? extends TableEntity> tableEntityClass) {
@@ -30,7 +29,7 @@ public final class TableUtils {
         return PrimaryKeyInfoResolver.getPrimaryKeyColumnName(clazz);
     }
 
-    public static <TE extends TableEntity> Map<TypedField<TE, Object>, String> mapFieldToColumnNames(Class<TE> tableEntityClass) {
+    public static Map<TypedField<? extends TableEntity, ?>, String> mapFieldToColumnNames(Class<? extends TableEntity> tableEntityClass) {
         return FieldMapResolver.mapFieldToColumnNames(tableEntityClass);
     }
 
@@ -38,11 +37,15 @@ public final class TableUtils {
         return ColumnResolver.getColumnName(field);
     }
 
-    public static <LC extends TableEntity, FC extends TableEntity> String getColumnNameOfForeignTableEntity(TypedField<LC, ?> typedField,  Class<FC> foreignEntityClass) {
-        return ColumnResolver.getForeignColumnName(typedField, foreignEntityClass);
+    public static String getColumnName(Field field) {
+        return ColumnResolver.getColumnName(field);
     }
 
-    public static <LC extends TableEntity, FC extends TableEntity> Field getLocalFieldOfTypeForeignEntity(Class<LC> entityToBeQueried, Class<FC> foreignClass) {
+    public static <LC extends TableEntity, FC extends TableEntity> String getColumnNameOfForeignTableEntity(TypedField<LC, FC> localTypedField) {
+        return ColumnResolver.getForeignColumnName(localTypedField);
+    }
+
+    public static <LC extends TableEntity, FC extends TableEntity> TypedField<LC, FC> getLocalFieldOfTypeForeignEntity(Class<LC> entityToBeQueried, Class<FC> foreignClass) {
         return ColumnResolver.getLocalFieldOfTypeForeignEntity(entityToBeQueried, foreignClass);
     }
 
@@ -52,5 +55,13 @@ public final class TableUtils {
 
     public static <TE extends TableEntity> TypedField<TE, ?> getPrimaryKeyTypedField(Class<TE> tableEntityClass) {
         return PrimaryKeyInfoResolver.getPrimaryKeyTypedField(tableEntityClass);
+    }
+
+    public static <TE extends TableEntity> List<TypedField<TE, ?>> getAllColumnFields(Class<TE> clazz) {
+        return ColumnResolver.getAllColumnFields(clazz);
+    }
+
+    public static <LC extends TableEntity, FC extends TableEntity> Object getForeignColumnValue(LC entity, TypedField<LC, FC> foreignColumn) {
+        return ColumnResolver.getForeignColumnValue(entity, foreignColumn);
     }
 }

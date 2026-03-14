@@ -7,6 +7,7 @@ import io.github.david.auk.fluid.jdbc.components.tables.TableEntity;
 public class FilterCriterionFactory {
 
     public static FilterCriterion<? extends TableEntity, ?> buildFilterCriterion(FilterTypedField<? extends TableEntity, ?> filterTypedField, ValueOperator valueOperator, Object value) {
+
         return buildFilterCriterionInternal(filterTypedField, valueOperator, value);
     }
 

@@ -4,6 +4,7 @@ import io.github.david.auk.fluid.jdbc.components.tables.TableEntity;
 import io.github.david.auk.fluid.jdbc.components.tables.utils.query.sql.clause.*;
 
 import java.sql.PreparedStatement;
+import java.sql.SQLException;
 
 public final class InsertQueryFactory {
     private InsertQueryFactory() {}
@@ -16,7 +17,7 @@ public final class InsertQueryFactory {
         return InsertClause.build(tableEntity);
     }
 
-    public static <TE extends TableEntity> void prepareInsertStatement(PreparedStatement insertStatement, TE entity) {
+    public static <TE extends TableEntity> void prepareInsertStatement(PreparedStatement insertStatement, TE entity) throws SQLException, IllegalAccessException {
         InsertClause.prepareInsertStatement(insertStatement, entity);
     }
 }

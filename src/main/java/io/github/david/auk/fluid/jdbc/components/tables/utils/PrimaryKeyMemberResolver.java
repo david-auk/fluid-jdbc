@@ -30,14 +30,15 @@ class PrimaryKeyMemberResolver {
      * Compute/get the actual PK value from an instance,
      * whether it’s stored in a field or computed by a method.
      */
-    public static Object getPrimaryKeyValue(Class<? extends TableEntity> tableEntityClass) {
-        AccessibleObject pkMember = getPrimaryKeyMember(tableEntityClass);
+    public static <T extends TableEntity> Object getPrimaryKeyValue(T tableEntity) {
+        AccessibleObject pkMember = getPrimaryKeyMember(tableEntity.getClass());
         try {
-            if (pkMember instanceof Field) {
-                return ((Field) pkMember).get(tableEntityClass);
-            } else {
-                return ((Method) pkMember).invoke(tableEntityClass);
+            if (pkMember instanceof Field pkField) {
+                return pkField.get(tableEntity);
+            } else if (pkMember instanceof Method pkMethod) {
+                return pkMethod.invoke(tableEntity);
             }
+            throw  new UnsupportedOperationException("Primary key member not supported: " + pkMember);
         } catch (ReflectiveOperationException e) {
             throw new RuntimeException("Failed to get primary key value", e);
         }

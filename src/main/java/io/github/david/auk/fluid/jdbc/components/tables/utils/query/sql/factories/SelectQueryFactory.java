@@ -1,11 +1,13 @@
 package io.github.david.auk.fluid.jdbc.components.tables.utils.query.sql.factories;
 
 import io.github.david.auk.fluid.jdbc.components.daos.querying.filters.FilterCriterion;
+import io.github.david.auk.fluid.jdbc.components.daos.querying.operator.ValueOperator;
 import io.github.david.auk.fluid.jdbc.components.tables.utils.query.sql.clause.*;
 
 import java.lang.reflect.Field;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
+import java.util.Collection;
 import java.util.List;
 
 /**
@@ -27,12 +29,14 @@ public final class SelectQueryFactory {
             Field orderByField,
             boolean ascending
     ) {
-        return String.join(" ",
+        String sql = String.join(" ",
                 SelectClause.build(tableName),
                 FromClause.build(tableName),
                 WhereClause.build(filterCriteria),
                 OrderByClause.build(tableName, orderByField, ascending)
         ).trim().replaceAll(" +", " ");
+
+        return sql;
     }
 
     public static void prepareSelectStatement(
@@ -51,11 +55,20 @@ public final class SelectQueryFactory {
 
         try {
             for (FilterCriterion<?, ?> filterCriterion : filterCriteria) {
-                preparedStatement.setObject(parameterIndex++, filterCriterion.getValue());
+                if (filterCriterion.getOperator() instanceof ValueOperator) {
+                    Object value = filterCriterion.getValue();
+
+                    if (value instanceof Collection<?> collection) {
+                        for (Object item : collection) {
+                            preparedStatement.setObject(parameterIndex++, item);
+                        }
+                    } else {
+                        preparedStatement.setObject(parameterIndex++, value);
+                    }
+                }
             }
-        }
-        catch (SQLException e) {
-            throw new IllegalStateException("Failed to prepare SELECT statement", e);
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
         }
     }
 

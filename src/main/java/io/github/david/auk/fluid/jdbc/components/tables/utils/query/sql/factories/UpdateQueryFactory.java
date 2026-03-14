@@ -9,8 +9,8 @@ import java.sql.PreparedStatement;
 public final class UpdateQueryFactory {
     private UpdateQueryFactory() {}
 
-    public static String build(Class<? extends TableEntity> tableEntity) {
-        return UpdateClause.build(tableEntity);
+    public static String build(Class<? extends TableEntity> tableEntity, boolean updatePrimaryKey) {
+        return UpdateClause.build(tableEntity, updatePrimaryKey);
     }
 
     public static <TE extends TableEntity> void prepareUpdateStatement(PreparedStatement updateStatement, TE entity) {

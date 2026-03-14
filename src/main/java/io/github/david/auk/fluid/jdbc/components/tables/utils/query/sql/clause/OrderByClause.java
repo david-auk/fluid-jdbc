@@ -1,5 +1,7 @@
 package io.github.david.auk.fluid.jdbc.components.tables.utils.query.sql.clause;
 
+import io.github.david.auk.fluid.jdbc.components.tables.utils.TableUtils;
+
 import java.lang.reflect.Field;
 
 public final class OrderByClause {
@@ -11,7 +13,7 @@ public final class OrderByClause {
             return "";
         }
 
-        String column = tableName + "." + field.getName();
+        String column = tableName + "." + TableUtils.getColumnName(field);
         return "ORDER BY " + column + (ascending ? " ASC" : " DESC");
     }
 }

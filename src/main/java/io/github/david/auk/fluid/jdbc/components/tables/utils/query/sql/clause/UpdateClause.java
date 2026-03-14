@@ -8,6 +8,7 @@ import java.lang.reflect.AccessibleObject;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.sql.PreparedStatement;
+import java.sql.SQLException;
 import java.util.Map;
 import java.util.StringJoiner;
 
@@ -21,7 +22,7 @@ public final class UpdateClause {
 
     public static <T extends TableEntity> String build(Class<T> clazz, boolean allowPrimaryKeyUpdate) {
         String tableName = TableUtils.getTableName(clazz);
-        Map<TypedField<T, Object>, String> fieldToColumnNames = TableUtils.mapFieldToColumnNames(clazz);
+        Map<TypedField<? extends TableEntity, ?>, String> fieldToColumnNames = TableUtils.mapFieldToColumnNames(clazz);
 
         if (fieldToColumnNames.isEmpty()) {
             throw new IllegalArgumentException(
@@ -41,7 +42,7 @@ public final class UpdateClause {
                     .findFirst()
                     .orElseThrow(() -> new IllegalStateException("Primary key column not found for " + clazz.getName()));
 
-            for (Map.Entry<TypedField<T, Object>, String> entry : fieldToColumnNames.entrySet()) {
+            for (Map.Entry<TypedField<? extends TableEntity, ?>, String> entry : fieldToColumnNames.entrySet()) {
                 if (allowPrimaryKeyUpdate || !entry.getValue().equals(pkColumn)) {
                     setJoiner.add(entry.getValue() + " = ?");
                 }
@@ -70,7 +71,7 @@ public final class UpdateClause {
             PreparedStatement updateStatement,
             TE originalEntity,
             TE updatedEntity,
-            boolean allowPrimaryKeyUpdate
+            boolean primaryKeyUpdate
     ) {
         if (updateStatement == null) {
             throw new IllegalArgumentException("PreparedStatement cannot be null");
@@ -83,67 +84,94 @@ public final class UpdateClause {
         }
 
         @SuppressWarnings("unchecked")
-        Class<TE> clazz = (Class<TE>) updatedEntity.getClass();
+        Class<TE> entityClass = (Class<TE>) updatedEntity.getClass();
 
-        if (!clazz.equals(originalEntity.getClass())) {
+        if (!entityClass.equals(originalEntity.getClass())) {
             throw new IllegalArgumentException(
                     "Original entity and updated entity must be of the same class"
             );
         }
 
-        Map<TypedField<TE, Object>, String> fieldToColumnNames = TableUtils.mapFieldToColumnNames(clazz);
-        AccessibleObject pkMember = TableUtils.getPrimaryKeyMember(clazz);
+        Map<TypedField<? extends TableEntity, ?>, String> fieldToColumnNames = TableUtils.mapFieldToColumnNames(entityClass);
+        AccessibleObject pkMember = TableUtils.getPrimaryKeyMember(entityClass);
 
         int parameterIndex = 1;
 
-        try {
-            if (pkMember instanceof Field pkField) {
-                Object originalPkValue = null;
+        if (pkMember instanceof Field pkField) {
+            Object originalPkValue = null;
 
-                for (TypedField<TE, Object> typedField : fieldToColumnNames.keySet()) {
-                    Field reflectField = typedField.reflect();
-                    Object updatedValue = reflectField.get(updatedEntity);
+            for (TypedField<? extends TableEntity, ?> typedField : fieldToColumnNames.keySet()) {
+                Field reflectField = typedField.reflect();
+                Object updatedValue;
 
-                    if (reflectField.getName().equals(pkField.getName())) {
+                try {
+                    Object fieldValue = reflectField.get(updatedEntity);
+
+                    if (fieldValue instanceof TableEntity foreignObject) {
+                        Class<? extends TableEntity> foreignClass = foreignObject.getClass();
+
+                        TypedField<TE, ? extends TableEntity> foreignReferenceColumn =
+                                TableUtils.getLocalFieldOfTypeForeignEntity(entityClass, foreignClass);
+
+                        updatedValue = TableUtils.getForeignColumnValue(updatedEntity, foreignReferenceColumn);
+                    } else {
+                        updatedValue = fieldValue;
+                    }
+                } catch (IllegalAccessException e) {
+                    throw new RuntimeException(e);
+                }
+
+                if (reflectField.getName().equals(pkField.getName())) {
+                    try {
                         originalPkValue = reflectField.get(originalEntity);
+                    } catch (IllegalAccessException e) {
+                        throw new RuntimeException(e);
+                    }
 
-                        if (allowPrimaryKeyUpdate) {
+                    if (primaryKeyUpdate) {
+                        try {
                             updateStatement.setObject(parameterIndex++, updatedValue);
+                        } catch (SQLException e) {
+                            throw new RuntimeException(e);
                         }
                     }
-                    else {
+                } else {
+                    try {
                         updateStatement.setObject(parameterIndex++, updatedValue);
+                    } catch (SQLException e) {
+                        throw new RuntimeException(e);
                     }
                 }
+            }
 
-                if (originalPkValue == null) {
-                    throw new IllegalStateException(
-                            "Primary key value resolved to null for " + clazz.getName()
-                    );
-                }
+            if (originalPkValue == null) {
+                throw new IllegalStateException(
+                        "Primary key value resolved to null for " + entityClass.getName()
+                );
+            }
 
+            try {
                 updateStatement.setObject(parameterIndex, originalPkValue);
+            } catch (SQLException e) {
+                throw new RuntimeException(e);
             }
-            else if (pkMember instanceof Method) {
-                for (TypedField<TE, Object> typedField : fieldToColumnNames.keySet()) {
-                    Object updatedValue = typedField.reflect().get(updatedEntity);
+        } else if (pkMember instanceof Method) {
+            for (TypedField<? extends TableEntity, ?> typedField : fieldToColumnNames.keySet()) {
+                Object updatedValue;
+                try {
+                    updatedValue = typedField.reflect().get(updatedEntity);
+                } catch (IllegalAccessException e) {
+                    throw new RuntimeException(e);
+                }
+                try {
                     updateStatement.setObject(parameterIndex++, updatedValue);
+                } catch (SQLException e) {
+                    throw new RuntimeException(e);
                 }
+            }
+        } else {
+            throw new IllegalStateException("Unsupported primary key member for " + entityClass.getName());
+        }
 
-                for (TypedField<TE, Object> typedField : fieldToColumnNames.keySet()) {
-                    Object originalValue = typedField.reflect().get(originalEntity);
-                    updateStatement.setObject(parameterIndex++, originalValue);
-                }
-            }
-            else {
-                throw new IllegalStateException("Unsupported primary key member for " + clazz.getName());
-            }
-        }
-        catch (Exception e) {
-            throw new IllegalStateException(
-                    "Failed to prepare UPDATE statement for " + clazz.getName(),
-                    e
-            );
-        }
     }
 }

@@ -50,7 +50,6 @@ public final class WhereClause {
                 filterCriterion
         );
 
-
         Operator operator = filterCriterion.getOperator();
 
         // no-value operator: "col IS NULL"

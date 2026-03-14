@@ -18,10 +18,7 @@ public final class FilterFieldFactory {
         Class<FC> foreignClass = foreignTypedFieldToBeQueried.owner();
 
         // Get the field of the local class referencing the foreign class
-        Field localFieldOfTypeForeignEntity = TableUtils.getLocalFieldOfTypeForeignEntity(entityToBeQueried, foreignClass);
-
-        // Create a TypedField of that field
-        TypedField<LC, FC> localTypedFieldOfForeignEntity = TypedField.of(entityToBeQueried, localFieldOfTypeForeignEntity, foreignClass);
+        TypedField<LC, FC> localTypedFieldOfForeignEntity = TableUtils.getLocalFieldOfTypeForeignEntity(entityToBeQueried, foreignClass);
 
         // Return the new ForeignFilterTypedField
         return new ForeignFilterTypedField<>(localTypedFieldOfForeignEntity, foreignTypedFieldToBeQueried);
@@ -47,11 +44,11 @@ public final class FilterFieldFactory {
     }
 
     private static TypedField<? extends TableEntity, Object> getTypedField(Field field) {
-        final Class<?> rawType = field.getType();
+        final Class<?> rawType = field.getDeclaringClass();
 
         final Class<? extends TableEntity> tableEntityClass;
         try {
-            // avoids an unchecked cast; throws ClassCastException if not a TableEntity
+            // avoids an unchecked cast; throws ClassCastException if the declaring class is not a TableEntity
             tableEntityClass = rawType.asSubclass(TableEntity.class);
         } catch (ClassCastException e) {
             String fieldId = field.getDeclaringClass().getName() + "#" + field.getName();

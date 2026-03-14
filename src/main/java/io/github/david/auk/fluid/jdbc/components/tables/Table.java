@@ -10,7 +10,6 @@ import java.lang.reflect.Field;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -59,7 +58,7 @@ public class Table<TE extends TableEntity, PK> {
      */
     @SuppressWarnings("unchecked")
     public PK getPrimaryKey(TE entity) {
-        return (PK)  TableUtils.getPrimaryKeyValue(entity.getClass());
+        return (PK) TableUtils.getPrimaryKeyValue(entity);
     }
 
     /**

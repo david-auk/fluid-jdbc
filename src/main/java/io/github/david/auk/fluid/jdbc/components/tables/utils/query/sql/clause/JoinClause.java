@@ -29,20 +29,20 @@ public final class JoinClause {
     private static void appendJoin(StringJoiner joinClauses, FilterCriterion<?, ?> criterion) {
 
         if (criterion.getFilterTypedField() instanceof ForeignFilterTypedField<?, ?> foreignFilterTypedField) {
-            String foreignTableName = TableUtils.getTableName(foreignFilterTypedField.getForeignClass());
+            String referencedTableName = TableUtils.getTableName(foreignFilterTypedField.getForeignClass());
+            String referencedColumn = foreignFilterTypedField.getReferencedColumn();
+
             String localTableName = TableUtils.getTableName(foreignFilterTypedField.getLocalClass());
+            String foreignKeyColumnName = foreignFilterTypedField.getForeignKeyColumn();
 
-            String foreignColumnName = foreignFilterTypedField.getForeignColumnName();
-            String localColumnName = foreignFilterTypedField.getLocalColumnName();
-
-            joinClauses.add(generateJoin(foreignTableName, foreignColumnName, localTableName, localColumnName));
+            joinClauses.add(generateJoin(referencedTableName, referencedColumn, localTableName, foreignKeyColumnName));
         }
     }
 
-    private static String generateJoin(String foreignTableName, String foreignColumnName, String localTableName, String localColumnName) {
-        return "JOIN " + foreignTableName + " ON "
-                + foreignTableName + "." + foreignColumnName
+    private static String generateJoin(String referencedTableName, String referencedColumn, String localTableName, String foreignKeyColumnName) {
+        return "JOIN " + referencedTableName + " ON "
+                + referencedTableName + "." + referencedColumn
                 + " = "
-                + localTableName + "." + localColumnName;
+                + localTableName + "." + foreignKeyColumnName;
     }
 }

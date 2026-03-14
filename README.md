@@ -746,10 +746,20 @@ erDiagram
   inherit_base ||--|| inherit_child : "shared PK"
 ```
 
+| Inheritance concept            | How it works                                                                                                                                                                                                                                                                                         |
+|--------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| PostgreSQL `INHERITS`          | A PostgreSQL database feature where a child table can inherit columns from a parent table at the schema level. This is database-specific behavior.                                                                                                                                                   |
+| `fluid-jdbc` inheritance model | `fluid-jdbc` does **not** use PostgreSQL `INHERITS`. Instead, it models inheritance through regular Java inheritance plus multiple related tables in the database.                                                                                                                                   |
+| Java class relationship        | When you annotate a child entity with `@TableInherits(Base.class)`, the child class must actually extend that base class in Java.                                                                                                                                                                    |
+| Shared primary key             | The child row must reuse the exact same primary key value as the base row. This is a required part of the inheritance model, not optional behavior. If the child does not declare its own `@PrimaryKey`, `fluid-jdbc` must resolve and enforce that inherited primary key from the base class chain. |
+| Child constructor requirement  | The constructor marked with `@TableConstructor` should take the base entity as its first parameter so the child can initialize `super(...)` using that same inherited primary key value.                                                                                                             |
+| Insert/update behavior         | In practice, base and child records are separate rows in separate tables, so write operations are typically coordinated together using `DaoTransactional`.                                                                                                                                           |
+| Querying behavior              | Reading a child entity requires combining base-table data with child-table data, because the full object is represented across both tables.                                                                                                                                                          |
+
 
 Rules:
 
 - If `@TableInherits(Base.class)` is present, the entity must actually `extends Base`.
-- The child may omit `@PrimaryKey` as long as a PK exists somewhere on the declared base chain.
+- The child may omit `@PrimaryKey` only if a primary key exists on the declared base chain and that inherited key is enforced as the exact same key used by the child table.
 
 [Transactional insert](#daotransactional) (base + child in one commit) is typically required.
