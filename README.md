@@ -597,9 +597,67 @@ try (Dao<EntityQueryLocal, String> localDao = DAOFactory.createDAO(EntityQueryLo
 This translates to a query equivalent to:
 
 ```sql
-SELECT local_query_entity.* FROM local_query_entity JOIN foreign_query_entity ON local_query_entity.foreign_id = foreign_query_entity.id WHERE foreign_query_entity.name = ('netherlands')
+SELECT local_query_entity.* 
+FROM local_query_entity 
+JOIN foreign_query_entity 
+  ON local_query_entity.foreign_id = foreign_query_entity.id 
+WHERE foreign_query_entity.name = ('netherlands')
 ```
 
+#### Combining local and foreign filters
+
+You can combine normal local-table filters with foreign-table filters using `.and(...)`.
+
+```java
+try (Dao<EntityLocal, String> localDao = DAOFactory.createDAO(EntityLocal.class)) {
+
+    List<EntityLocal> results = new QueryBuilder<>(localDao)
+        .where(EntityForeign.class.getDeclaredField("name"), SingleValueOperator.EQUALS, "netherlands")
+        .and(EntityLocal.class.getDeclaredField("value"), SingleValueOperator.GREATER_THAN, 10)
+        .get();
+}
+```
+
+Conceptual SQL:
+
+```sql
+SELECT local_test_table.*
+FROM local_test_table
+JOIN foreign_test_table
+  ON local_test_table.foreign_entity_id = foreign_test_table.id
+WHERE foreign_test_table.name = 'netherlands'
+  AND local_test_table.value > 10;
+```
+
+### Querying across Inheritance
+
+If an entity uses `@TableInherits(Base.class)`, `QueryBuilder` can also filter child rows by fields declared on the inherited base class.
+
+That means a child DAO can be queried using either:
+
+- fields declared on the child entity itself
+- fields declared on the inherited base entity
+
+Example child query using a base field:
+
+```java
+try (Dao<EntityInheritChild, String> childDao = DAOFactory.createDAO(EntityInheritChild.class)) {
+
+    List<EntityInheritChild> results = new QueryBuilder<>(childDao)
+        .where(EntityInheritBase.class.getDeclaredField("name"), SingleValueOperator.EQUALS, "alpha")
+        .get();
+}
+```
+
+Conceptual SQL:
+
+```sql
+SELECT inherit_child.*
+FROM inherit_child
+JOIN inherit_base
+  ON inherit_child.id = inherit_base.id
+WHERE inherit_base.name = 'alpha';
+```
 ### Design goals
 
 The QueryBuilder is deliberately minimal and predictable:
