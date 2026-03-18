@@ -727,9 +727,7 @@ try (Dao<EntityForeign, String> foreignDao = DAOFactory.createDAO(EntityForeign.
     localDao.add(new EntityLocal("local_1", fk));
 
     EntityLocal read = localDao.get("local_1");
-    // Depending on your hydration policy, `read.foreignEntity()` will be either:
-    // - fully hydrated (name + value), OR
-    // - null
+    // read.foreignObject is now fully hydrated
 }
 ```
 
