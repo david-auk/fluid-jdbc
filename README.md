@@ -520,6 +520,8 @@ WHERE name IS NULL
 
 Filters are combined using `AND`.
 
+> Note: `.and` is an alias to `.where` and is not necessary. It's there to keep queries readable
+
 ```java
 new QueryBuilder<>(dao)
     .where(EntityQuerying.class.getDeclaredField("category"), SingleValueOperator.EQUALS, "A")
