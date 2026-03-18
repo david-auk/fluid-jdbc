@@ -14,14 +14,7 @@
 
 > This library is intentionally lightweight: it does not try to be a full ORM.
 
-## Install
-
-### Gradle (Kotlin DSL)
-
-```kotlin
-repositories { mavenCentral() }
-dependencies { implementation("io.github.david-auk:fluid-jdbc:0.1.3") }
-```
+## [Install the Maven package](https://central.sonatype.com/artifact/io.github.david-auk/fluid-jdbc)
 
 ## Quickstart (minimal example)
 

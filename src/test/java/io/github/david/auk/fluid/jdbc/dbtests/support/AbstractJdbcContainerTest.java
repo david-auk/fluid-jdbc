@@ -4,7 +4,6 @@ import io.github.david.auk.fluid.jdbc.components.Database;
 import io.github.david.auk.fluid.jdbc.dbtests.contracts.crud.ContractCrud;
 import io.github.david.auk.fluid.jdbc.dbtests.contracts.foreignkey.ContractForeignKey;
 import io.github.david.auk.fluid.jdbc.dbtests.contracts.inheritance.ContractInheritance;
-import io.github.david.auk.fluid.jdbc.dbtests.contracts.querying.foreign.ContractQueryingForeign;
 import io.github.david.auk.fluid.jdbc.dbtests.contracts.querying.ContractQuerying;
 import org.junit.jupiter.api.*;
 import org.testcontainers.containers.JdbcDatabaseContainer;
@@ -50,10 +49,9 @@ public abstract class AbstractJdbcContainerTest implements
     protected String[] dropAllTablesSql() {
         return new String[]{
                 // FK tables first
-                "DROP TABLE IF EXISTS local_test_table", "DROP TABLE IF EXISTS foreign_test_table",
-
-                // Querying (Foreign JOIN tests)
-                "DROP TABLE IF EXISTS local_query_entity", "DROP TABLE IF EXISTS foreign_query_entity",
+                "DROP TABLE IF EXISTS local_test_table",
+                "DROP TABLE IF EXISTS foreign_second_test_table",
+                "DROP TABLE IF EXISTS foreign_test_table",
 
                 // CRUD
                 "DROP TABLE IF EXISTS crud_test_table",
@@ -61,8 +59,9 @@ public abstract class AbstractJdbcContainerTest implements
                 // Querying
                 "DROP TABLE IF EXISTS query_test_table",
 
-                // Inheritance (placeholder)
-                "DROP TABLE IF EXISTS inherit_child", "DROP TABLE IF EXISTS inherit_base"};
+                // Inheritance
+                "DROP TABLE IF EXISTS inherit_child",
+                "DROP TABLE IF EXISTS inherit_base"};
     }
 
     /**
@@ -91,51 +90,43 @@ public abstract class AbstractJdbcContainerTest implements
                 )
                 """,
 
-                // Foreign key tables: referenced table first
+                // Foreign key tables: referenced tables first
                 """
                 CREATE TABLE foreign_test_table (
-                    name  VARCHAR(255) NOT NULL,
-                    value INTEGER      NOT NULL,
-                    CONSTRAINT pk_foreign_test_table PRIMARY KEY (name)
+                    id VARCHAR(36) PRIMARY KEY,
+                    name VARCHAR(255) NOT NULL,
+                    value INTEGER NOT NULL
                 )
-                """, """
+                """,
+                """
+                CREATE TABLE foreign_second_test_table (
+                    id VARCHAR(36) PRIMARY KEY,
+                    is_active BOOLEAN,
+                    value INTEGER
+                )
+                """,
+                """
                 CREATE TABLE local_test_table (
-                    name                 VARCHAR(255) NOT NULL,
-                    foreign_entity_name  VARCHAR(255) NOT NULL,
+                    id VARCHAR(36) PRIMARY KEY,
+                    foreign_entity_id VARCHAR(36) NOT NULL,
+                    foreign_second_entity_id VARCHAR(36) NOT NULL,
+                    value INTEGER,
 
-                    CONSTRAINT pk_local_test_table PRIMARY KEY (name),
                     CONSTRAINT fk_local_foreign_entity
-                        FOREIGN KEY (foreign_entity_name)
-                        REFERENCES foreign_test_table (name)
+                        FOREIGN KEY (foreign_entity_id)
+                        REFERENCES foreign_test_table (id)
                         ON UPDATE CASCADE
-                        ON DELETE RESTRICT
-                )
-                """,
+                        ON DELETE RESTRICT,
 
-                // Querying Foreign JOIN tables: referenced table first
-                """
-                CREATE TABLE foreign_query_entity (
-                    id   VARCHAR(36) PRIMARY KEY,
-                    name VARCHAR(255) NOT NULL
-                )
-                """,
-                """
-                CREATE TABLE local_query_entity (
-                    id         VARCHAR(36) PRIMARY KEY,
-                    name       VARCHAR(255) NOT NULL,
-                    foreign_id VARCHAR(36)  NOT NULL,
-                    value_int  INTEGER,
-
-                    CONSTRAINT fk_local_query_entity_foreign
-                        FOREIGN KEY (foreign_id)
-                        REFERENCES foreign_query_entity(id)
+                    CONSTRAINT fk_local_foreign_second_entity
+                        FOREIGN KEY (foreign_second_entity_id)
+                        REFERENCES foreign_second_test_table (id)
                         ON UPDATE CASCADE
                         ON DELETE RESTRICT
                 )
                 """,
 
                 // Inheritance
-                // Child `inherits` base by sharing the same PK and referencing base(id)
                 """
                 CREATE TABLE inherit_base (
                     id VARCHAR(255) PRIMARY KEY,

@@ -4,18 +4,24 @@ import io.github.david.auk.fluid.jdbc.components.daos.Dao;
 import io.github.david.auk.fluid.jdbc.dbtests.contracts.ContractInterface;
 import org.junit.jupiter.api.Test;
 
-import static org.junit.jupiter.api.Assumptions.*;
-
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public interface ContractForeignKey extends ContractInterface {
 
     private static void assertFkHydratedOrNull(EntityLocal local) {
-        // Requirement #2: fully hydrated OR null.
-        // If not null, all non-nullable fields in EntityForeign must be present.
         if (local.foreignEntity() != null) {
-            assertNotNull(local.foreignEntity().name(), "hydrated FK must have columnName");
-            assertNotNull(local.foreignEntity().value(), "hydrated FK must have value (not a PK-only stub)");
+            assertNotNull(local.foreignEntity().id(), "hydrated foreignEntity must have id");
+            assertNotNull(local.foreignEntity().name(), "hydrated foreignEntity must have name");
+            assertNotNull(local.foreignEntity().value(), "hydrated foreignEntity must have value");
+        }
+
+        if (local.foreignEntitySecond() != null) {
+            assertNotNull(local.foreignEntitySecond().id(), "hydrated foreignEntitySecond must have id");
+            assertNotNull(local.foreignEntitySecond().isActive(), "hydrated foreignEntitySecond must have isActive");
+            assertNotNull(local.foreignEntitySecond().value(), "hydrated foreignEntitySecond must have value");
         }
     }
 
@@ -24,243 +30,186 @@ public interface ContractForeignKey extends ContractInterface {
         assertNotNull(ex.getMessage(), "exception should have a message");
     }
 
-    private static boolean tryUpdateForeignPrimaryKey(
-            Dao<EntityForeign, String> foreignDao,
-            EntityForeign oldEntity,
-            EntityForeign newEntity
-    ) {
-        try {
-            foreignDao.update(oldEntity, newEntity);
-            return true;
-        } catch (RuntimeException ex) {
-            return false;
-        }
-    }
-
-    private static void assertLocalNeverDangling(
-            Dao<EntityForeign, String> foreignDao,
-            Dao<EntityLocal, String> localDao,
-            String localPk
-    ) {
-        EntityLocal local = localDao.get(localPk);
-        if (local != null) {
-            assertFkHydratedOrNull(local);
-
-            if (local.foreignEntity() != null) {
-                assertTrue(
-                        foreignDao.existsByPrimaryKey(local.foreignEntity().name()),
-                        "local must not reference a non-existing foreign row"
-                );
-            }
-        }
-    }
-
     // --- tests ---
 
     @Test
     default void foreignKey_startsEmpty() {
-        try (Dao<EntityForeign, String> foreignDao = dao(EntityForeign.class, String.class);
-             Dao<EntityLocal, String> localDao = dao(EntityLocal.class, String.class)) {
-
+        try (
+                Dao<EntityForeign, String> foreignDao = dao(EntityForeign.class, String.class);
+                Dao<EntityForeignSecond, String> foreignSecondDao = dao(EntityForeignSecond.class, String.class);
+                Dao<EntityLocal, String> localDao = dao(EntityLocal.class, String.class)
+        ) {
             assertTrue(foreignDao.getAll().isEmpty(), "foreign table should start empty");
+            assertTrue(foreignSecondDao.getAll().isEmpty(), "foreign second table should start empty");
             assertTrue(localDao.getAll().isEmpty(), "local table should start empty");
         }
     }
 
     @Test
-    default void foreignKey_insertLocal_requiresExistingForeign() {
+    default void foreignKey_insertLocal_requiresExistingForeignRows() {
         try (Dao<EntityLocal, String> localDao = dao(EntityLocal.class, String.class)) {
+            EntityForeign missingForeign = new EntityForeign(null, "missing_fk", 123);
+            EntityForeignSecond missingForeignSecond = new EntityForeignSecond(null, true, 456);
+            EntityLocal local = new EntityLocal(null, missingForeign, missingForeignSecond, 99);
 
-            EntityForeign missing = new EntityForeign("missing_fk", 123);
-            EntityLocal local = new EntityLocal("local_1", missing);
-
-            RuntimeException ex = assertThrows(RuntimeException.class, () -> localDao.add(local),
-                    "inserting local with missing FK must fail");
+            RuntimeException ex = assertThrows(
+                    RuntimeException.class,
+                    () -> localDao.add(local),
+                    "inserting local with missing foreign rows must fail"
+            );
             assertThrowsFkViolation(ex);
         }
     }
 
     @Test
     default void foreignKey_insertForeignThenLocal_succeeds_andHydratesOnRead() {
-        try (Dao<EntityForeign, String> foreignDao = dao(EntityForeign.class, String.class);
-             Dao<EntityLocal, String> localDao = dao(EntityLocal.class, String.class)) {
+        try (
+                Dao<EntityForeign, String> foreignDao = dao(EntityForeign.class, String.class);
+                Dao<EntityForeignSecond, String> foreignSecondDao = dao(EntityForeignSecond.class, String.class);
+                Dao<EntityLocal, String> localDao = dao(EntityLocal.class, String.class)
+        ) {
+            EntityForeign foreign = new EntityForeign(null, "fk_1", 7);
+            EntityForeignSecond foreignSecond = new EntityForeignSecond(null, true, 11);
+            foreignDao.add(foreign);
+            foreignSecondDao.add(foreignSecond);
 
-            EntityForeign fk = new EntityForeign("fk_1", 7);
-            foreignDao.add(fk);
+            EntityLocal inserted = new EntityLocal(null, foreign, foreignSecond, 42);
+            localDao.add(inserted);
 
-            localDao.add(new EntityLocal("local_1", fk));
+            EntityLocal local = localDao.get(inserted.id());
+            assertNotNull(local, "local should have been inserted");
+            assertEquals(inserted.id(), local.id(), "local PK should match");
+            assertEquals(42, local.value(), "local value should match");
 
-            EntityLocal local = localDao.get("local_1");
-
-            assumeTrue(local != null, "local should have been inserted");
-
-            assertEquals("local_1", local.name(), "local PK should match");
-
-            // Requirement #2: fully hydrated OR null.
             assertFkHydratedOrNull(local);
 
-            // In the normal case (non-null), verify correctness.
-            if (local.foreignEntity() != null) {
-                assertEquals("fk_1", local.foreignEntity().name(), "FK PK should match");
-                assertEquals(7, local.foreignEntity().value(), "FK value should match");
-            }
+            assertNotNull(local.foreignEntity(), "foreignEntity should be hydrated");
+            assertEquals(foreign.id(), local.foreignEntity().id(), "foreignEntity id should match");
+            assertEquals("fk_1", local.foreignEntity().name(), "foreignEntity name should match");
+            assertEquals(7, local.foreignEntity().value(), "foreignEntity value should match");
+
+            assertNotNull(local.foreignEntitySecond(), "foreignEntitySecond should be hydrated");
+            assertEquals(foreignSecond.id(), local.foreignEntitySecond().id(), "foreignEntitySecond id should match");
+            assertEquals(true, local.foreignEntitySecond().isActive(), "foreignEntitySecond isActive should match");
+            assertEquals(11, local.foreignEntitySecond().value(), "foreignEntitySecond value should match");
         }
     }
 
     @Test
-    default void foreignKey_updateLocalForeignKey_toExistingForeign_succeeds() {
-        try (Dao<EntityForeign, String> foreignDao = dao(EntityForeign.class, String.class);
-             Dao<EntityLocal, String> localDao = dao(EntityLocal.class, String.class)) {
+    default void foreignKey_updateLocalForeignKeys_toExistingForeignRows_succeeds() {
+        try (
+                Dao<EntityForeign, String> foreignDao = dao(EntityForeign.class, String.class);
+                Dao<EntityForeignSecond, String> foreignSecondDao = dao(EntityForeignSecond.class, String.class);
+                Dao<EntityLocal, String> localDao = dao(EntityLocal.class, String.class)
+        ) {
+            EntityForeign foreign1 = new EntityForeign(null, "fk_1", 1);
+            EntityForeign foreign2 = new EntityForeign(null, "fk_2", 2);
+            EntityForeignSecond foreignSecond1 = new EntityForeignSecond(null, true, 10);
+            EntityForeignSecond foreignSecond2 = new EntityForeignSecond(null, false, 20);
+            foreignDao.add(foreign1);
+            foreignDao.add(foreign2);
+            foreignSecondDao.add(foreignSecond1);
+            foreignSecondDao.add(foreignSecond2);
 
-            EntityForeign fk1 = new EntityForeign("fk_1", 1);
-            EntityForeign fk2 = new EntityForeign("fk_2", 2);
-            foreignDao.add(fk1);
-            foreignDao.add(fk2);
+            EntityLocal before = new EntityLocal(null, foreign1, foreignSecond1, 5);
+            localDao.add(before);
 
-            localDao.add(new EntityLocal("local_1", fk1));
+            EntityLocal afterUpdate = new EntityLocal(before.id(), foreign2, foreignSecond2, 6);
+            localDao.update(afterUpdate);
 
-            localDao.update(new EntityLocal("local_1", fk2));
-
-            EntityLocal after = localDao.get("local_1");
+            EntityLocal after = localDao.get(before.id());
+            assertNotNull(after, "updated local row should exist");
             assertFkHydratedOrNull(after);
 
-            if (after.foreignEntity() != null) {
-                assertEquals("fk_2", after.foreignEntity().name(), "local FK should update to new foreign PK");
-                assertEquals(2, after.foreignEntity().value(), "updated FK should be hydrated");
-            }
+            assertEquals(6, after.value(), "local value should be updated");
+            assertNotNull(after.foreignEntity(), "foreignEntity should be present after update");
+            assertEquals(foreign2.id(), after.foreignEntity().id(), "local foreignEntity should update to new foreign row");
+            assertEquals("fk_2", after.foreignEntity().name(), "updated foreignEntity name should match");
+            assertEquals(2, after.foreignEntity().value(), "updated foreignEntity value should match");
+
+            assertNotNull(after.foreignEntitySecond(), "foreignEntitySecond should be present after update");
+            assertEquals(foreignSecond2.id(), after.foreignEntitySecond().id(), "local foreignEntitySecond should update to new foreign row");
+            assertEquals(false, after.foreignEntitySecond().isActive(), "updated foreignEntitySecond isActive should match");
+            assertEquals(20, after.foreignEntitySecond().value(), "updated foreignEntitySecond value should match");
         }
     }
 
     @Test
-    default void foreignKey_updateLocalForeignKey_toMissingForeign_fails() {
-        try (Dao<EntityForeign, String> foreignDao = dao(EntityForeign.class, String.class);
-             Dao<EntityLocal, String> localDao = dao(EntityLocal.class, String.class)) {
+    default void foreignKey_updateLocalForeignKeys_toMissingForeignRows_fails() {
+        try (
+                Dao<EntityForeign, String> foreignDao = dao(EntityForeign.class, String.class);
+                Dao<EntityForeignSecond, String> foreignSecondDao = dao(EntityForeignSecond.class, String.class);
+                Dao<EntityLocal, String> localDao = dao(EntityLocal.class, String.class)
+        ) {
+            EntityForeign existingForeign = new EntityForeign(null, "fk_1", 1);
+            EntityForeignSecond existingForeignSecond = new EntityForeignSecond(null, true, 10);
+            foreignDao.add(existingForeign);
+            foreignSecondDao.add(existingForeignSecond);
 
-            EntityForeign fk1 = new EntityForeign("fk_1", 1);
-            foreignDao.add(fk1);
-            localDao.add(new EntityLocal("local_1", fk1));
+            EntityLocal before = new EntityLocal(null, existingForeign, existingForeignSecond, 5);
+            localDao.add(before);
 
-            EntityForeign missing = new EntityForeign("missing_fk", 999);
+            EntityForeign missingForeign = new EntityForeign(null, "missing_fk", 999);
+            EntityForeignSecond missingForeignSecond = new EntityForeignSecond(null, false, 999);
 
-            RuntimeException ex = assertThrows(RuntimeException.class,
-                    () -> localDao.update(new EntityLocal("local_1", missing)),
-                    "updating local to missing FK must fail");
+            RuntimeException ex = assertThrows(
+                    RuntimeException.class,
+                    () -> localDao.update(new EntityLocal(before.id(), missingForeign, missingForeignSecond, 6)),
+                    "updating local to missing foreign rows must fail"
+            );
             assertThrowsFkViolation(ex);
         }
     }
 
     @Test
-    default void foreignKey_deleteForeign_obeysSchemaPolicy_butNeverLeavesDanglingReferences() {
-        try (Dao<EntityForeign, String> foreignDao = dao(EntityForeign.class, String.class);
-             Dao<EntityLocal, String> localDao = dao(EntityLocal.class, String.class)) {
+    default void foreignKey_deleteReferencedForeignRow_failsWhenLocalDependsOnIt() {
+        try (
+                Dao<EntityForeign, String> foreignDao = dao(EntityForeign.class, String.class);
+                Dao<EntityForeignSecond, String> foreignSecondDao = dao(EntityForeignSecond.class, String.class);
+                Dao<EntityLocal, String> localDao = dao(EntityLocal.class, String.class)
+        ) {
+            EntityForeign foreign = new EntityForeign(null, "fk_1", 1);
+            EntityForeignSecond foreignSecond = new EntityForeignSecond(null, true, 10);
+            foreignDao.add(foreign);
+            foreignSecondDao.add(foreignSecond);
+            EntityLocal local = new EntityLocal(null, foreign, foreignSecond, 5);
+            localDao.add(local);
 
-            EntityForeign fk = new EntityForeign("fk_1", 1);
-            foreignDao.add(fk);
-            localDao.add(new EntityLocal("local_1", fk));
+            RuntimeException ex = assertThrows(
+                    RuntimeException.class,
+                    () -> foreignDao.delete(foreign.id()),
+                    "deleting a referenced foreign row should fail because schema uses RESTRICT"
+            );
+            assertThrowsFkViolation(ex);
 
-            boolean deleteForeignSucceeded;
-            try {
-                foreignDao.delete("fk_1");
-                deleteForeignSucceeded = true;
-            } catch (RuntimeException ex) {
-                deleteForeignSucceeded = false;
-            }
-
-            if (deleteForeignSucceeded) {
-                // If schema allows deleting the referenced row (CASCADE or SET NULL),
-                // then the system must not leave a dangling FK reference.
-
-                EntityLocal local = localDao.get("local_1");
-
-                // Requirement #2: hydrated or null.
-                assertFkHydratedOrNull(local);
-
-                // If local still exists, FK must be null (SET NULL) or point to an existing row (unlikely if fk deleted).
-                if (local.foreignEntity() != null) {
-                    // If it’s non-null, the foreign row must exist (otherwise it's dangling).
-                    assertTrue(foreignDao.existsByPrimaryKey(local.foreignEntity().name()),
-                            "local must not reference a deleted foreign row");
-                }
-            } else {
-                // RESTRICT / NO ACTION is acceptable too.
-                assertTrue(foreignDao.existsByPrimaryKey("fk_1"),
-                        "if delete fails, foreign row should still exist");
-                assertTrue(localDao.existsByPrimaryKey("local_1"),
-                        "if delete fails, local row should still exist");
-            }
-        }
-    }
-
-
-    @Test
-    default void foreignKey_updateForeignPrimaryKey_neverLeavesDanglingReference() {
-        try (Dao<EntityForeign, String> foreignDao = dao(EntityForeign.class, String.class);
-             Dao<EntityLocal, String> localDao = dao(EntityLocal.class, String.class)) {
-
-            EntityForeign fkOld = new EntityForeign("fk_old", 10);
-            foreignDao.add(fkOld);
-            localDao.add(new EntityLocal("local_1", fkOld));
-
-            EntityForeign fkNew = new EntityForeign("fk_new", 10);
-
-            // Attempt the PK update (policy-dependent).
-            tryUpdateForeignPrimaryKey(foreignDao, fkOld, fkNew);
-
-            // Requirement: regardless of policy, local must never end up dangling.
-            assertLocalNeverDangling(foreignDao, localDao, "local_1");
+            assertTrue(foreignDao.existsByPrimaryKey(foreign.id()), "foreign row should still exist after failed delete");
+            assertTrue(localDao.existsByPrimaryKey(local.id()), "local row should still exist after failed delete");
         }
     }
 
     @Test
-    default void foreignKey_updateForeignPrimaryKey_whenSupported_canUpdateLocalToNewKey() {
-        try (Dao<EntityForeign, String> foreignDao = dao(EntityForeign.class, String.class);
-             Dao<EntityLocal, String> localDao = dao(EntityLocal.class, String.class)) {
+    default void foreignKey_deleteSecondReferencedForeignRow_failsWhenLocalDependsOnIt() {
+        try (
+                Dao<EntityForeign, String> foreignDao = dao(EntityForeign.class, String.class);
+                Dao<EntityForeignSecond, String> foreignSecondDao = dao(EntityForeignSecond.class, String.class);
+                Dao<EntityLocal, String> localDao = dao(EntityLocal.class, String.class)
+        ) {
+            EntityForeign foreign = new EntityForeign(null, "fk_1", 1);
+            EntityForeignSecond foreignSecond = new EntityForeignSecond(null, true, 10);
+            foreignDao.add(foreign);
+            foreignSecondDao.add(foreignSecond);
+            EntityLocal local = new EntityLocal(null, foreign, foreignSecond, 5);
+            localDao.add(local);
 
-            EntityForeign fkOld = new EntityForeign("fk_old", 10);
-            foreignDao.add(fkOld);
-            localDao.add(new EntityLocal("local_1", fkOld));
+            RuntimeException ex = assertThrows(
+                    RuntimeException.class,
+                    () -> foreignSecondDao.delete(foreignSecond.id()),
+                    "deleting a referenced second foreign row should fail because schema uses RESTRICT"
+            );
+            assertThrowsFkViolation(ex);
 
-            EntityForeign fkNew = new EntityForeign("fk_new", 10);
-
-            boolean supported = tryUpdateForeignPrimaryKey(foreignDao, fkOld, fkNew);
-            assumeTrue(supported, "Schema/DB does not allow updating referenced foreign PKs");
-
-            // New PK should exist after successful update.
-            assertTrue(foreignDao.existsByPrimaryKey("fk_new"), "new foreign PK should exist after update");
-
-            // Your intended flow: update local row to reference the new PK.
-            localDao.update(new EntityLocal("local_1", fkNew));
-
-            EntityLocal after = localDao.get("local_1");
-            assertFkHydratedOrNull(after);
-            if (after.foreignEntity() != null) {
-                assertEquals("fk_new", after.foreignEntity().name(), "local should reference the updated foreign PK");
-                assertEquals(10, after.foreignEntity().value(), "foreign entity should remain hydrated after PK update");
-            }
-
-            // Still no dangling reference at the end.
-            assertLocalNeverDangling(foreignDao, localDao, "local_1");
-        }
-    }
-
-    @Test
-    default void foreignKey_updateForeignPrimaryKey_whenRestricted_oldKeyRemainsValid() {
-        try (Dao<EntityForeign, String> foreignDao = dao(EntityForeign.class, String.class);
-             Dao<EntityLocal, String> localDao = dao(EntityLocal.class, String.class)) {
-
-            EntityForeign fkOld = new EntityForeign("fk_old", 10);
-            foreignDao.add(fkOld);
-            localDao.add(new EntityLocal("local_1", fkOld));
-
-            assertTrue(foreignDao.existsByPrimaryKey("fk_old"), "old foreign PK should still exist if update failed");
-
-            EntityLocal local = localDao.get("local_1");
-            assertFkHydratedOrNull(local);
-            if (local.foreignEntity() != null) {
-                assertEquals("fk_old", local.foreignEntity().name(), "local should still reference old PK if update failed");
-            }
-
-            assertLocalNeverDangling(foreignDao, localDao, "local_1");
+            assertTrue(foreignSecondDao.existsByPrimaryKey(foreignSecond.id()), "second foreign row should still exist after failed delete");
+            assertTrue(localDao.existsByPrimaryKey(local.id()), "local row should still exist after failed delete");
         }
     }
 }

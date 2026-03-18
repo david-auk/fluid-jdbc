@@ -7,15 +7,18 @@ import io.github.david.auk.fluid.jdbc.annotations.table.field.TableColumn;
 import io.github.david.auk.fluid.jdbc.components.tables.TableEntity;
 
 import java.util.Objects;
+import java.util.UUID;
 
 @TableName("foreign_test_table")
 public record EntityForeign(
-        @PrimaryKey @TableColumn String name,
+        @PrimaryKey @TableColumn String id,
+        @TableColumn String name,
         @TableColumn Integer value
         ) implements TableEntity {
 
     @TableConstructor
-    public EntityForeign(String name, Integer value) {
+    public EntityForeign(String id, String name, Integer value) {
+        this.id = Objects.requireNonNullElse(id, UUID.randomUUID().toString());
         this.name = Objects.requireNonNull(name, "columnName");
         this.value = Objects.requireNonNull(value, "value");
     }

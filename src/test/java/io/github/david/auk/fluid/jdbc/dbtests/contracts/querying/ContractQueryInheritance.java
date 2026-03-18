@@ -1,4 +1,4 @@
-package io.github.david.auk.fluid.jdbc.dbtests.contracts.querying.inheriance;
+package io.github.david.auk.fluid.jdbc.dbtests.contracts.querying;
 
 import io.github.david.auk.fluid.jdbc.components.daos.Dao;
 import io.github.david.auk.fluid.jdbc.components.daos.QueryBuilder;
