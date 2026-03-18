@@ -245,9 +245,7 @@ Declares table inheritance.
 @TableInherits(BaseEntity.class)
 ```
 
-Rules:
-- Entity must actually `extends BaseEntity`
-- PK may be defined on the base class
+[Read more about inheritance](#inheritance)
 
 ---
 
