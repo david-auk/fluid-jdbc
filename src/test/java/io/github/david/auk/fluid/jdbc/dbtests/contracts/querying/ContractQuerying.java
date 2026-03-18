@@ -1,19 +1,18 @@
 package io.github.david.auk.fluid.jdbc.dbtests.contracts.querying;
 
 import io.github.david.auk.fluid.jdbc.components.daos.Dao;
-import io.github.david.auk.fluid.jdbc.components.daos.querying.QueryBuilder;
+import io.github.david.auk.fluid.jdbc.components.daos.QueryBuilder;
+import io.github.david.auk.fluid.jdbc.components.daos.querying.operator.MultiOperator;
 import io.github.david.auk.fluid.jdbc.components.daos.querying.operator.NoValueOperator;
-import io.github.david.auk.fluid.jdbc.components.daos.querying.operator.ValueOperator;
+import io.github.david.auk.fluid.jdbc.components.daos.querying.operator.RangeOperator;
+import io.github.david.auk.fluid.jdbc.components.daos.querying.operator.SingleValueOperator;
 import io.github.david.auk.fluid.jdbc.dbtests.contracts.ContractInterface;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.MethodSource;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
-import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -23,13 +22,13 @@ import static org.junit.jupiter.api.Assertions.*;
  * <p>This contract intentionally only provides:</p>
  * <ul>
  *   <li>a deterministic-ish dataset generator (covers LIKE/range/boolean/equality use-cases)</li>
- *   <li>simple helpers to populate/clear and to assert the table starts empty</li>
+ *   <li>simple helpers to populateInheritance/clear and to assert the table starts empty</li>
  * </ul>
  *
  * <p>Concrete query-behavior tests (e.g. WHERE, LIKE, ORDER BY, LIMIT) can be added in additional
  * contracts once your query API is implemented.</p>
  */
-public interface ContractQuerying extends ContractInterface {
+public interface ContractQuerying extends ContractQueryingForeign, ContractQueryInheritance, ContractInterface {
 
     /**
      * Creates a fresh entity with a random primary key.
@@ -88,7 +87,7 @@ public interface ContractQuerying extends ContractInterface {
     /**
      * Convenience: insert the default dataset.
      */
-    default void populate(Dao<EntityQuerying, String> dao) {
+    default void populateQuerying(Dao<EntityQuerying, String> dao) {
         Objects.requireNonNull(dao, "dao");
         for (EntityQuerying row : dataset()) {
             dao.add(row);
@@ -98,7 +97,7 @@ public interface ContractQuerying extends ContractInterface {
     /**
      * Convenience: insert a custom dataset.
      */
-    default void populate(Dao<EntityQuerying, String> dao, List<EntityQuerying> rows) {
+    default void populateQuerying(Dao<EntityQuerying, String> dao, List<EntityQuerying> rows) {
         Objects.requireNonNull(dao, "dao");
         Objects.requireNonNull(rows, "rows");
         for (EntityQuerying row : rows) {
@@ -130,15 +129,15 @@ public interface ContractQuerying extends ContractInterface {
     }
 
     /**
-     * Minimal sanity check: populate inserts exactly the expected number of rows.
+     * Minimal sanity check: populateInheritance inserts exactly the expected number of rows.
      */
     @Test
     default void querying_populate_insertsDataset() {
         try (Dao<EntityQuerying, String> dao = dao(EntityQuerying.class, String.class)) {
             List<EntityQuerying> rows = dataset();
-            populate(dao, rows);
+            populateQuerying(dao, rows);
 
-            assertEquals(rows.size(), dao.getAll().size(), "populate should insert all dataset rows");
+            assertEquals(rows.size(), dao.getAll().size(), "populateInheritance should insert all dataset rows");
         }
     }
 
@@ -146,10 +145,10 @@ public interface ContractQuerying extends ContractInterface {
     @Test
     default void querying_where_equals_filtersOnCategory() {
         try (Dao<EntityQuerying, String> dao = dao(EntityQuerying.class, String.class)) {
-            populate(dao);
+            populateQuerying(dao);
 
             List<EntityQuerying> results = new QueryBuilder<>(dao)
-                    .where(field("category"), ValueOperator.EQUALS, "A")
+                    .where(field("category"), SingleValueOperator.EQUALS, "A")
                     .get();
 
             assertEquals(4, results.size(), "category A should return 4 rows from the unified dataset");
@@ -160,10 +159,10 @@ public interface ContractQuerying extends ContractInterface {
     @Test
     default void querying_where_equals_filtersOnBoolean() {
         try (Dao<EntityQuerying, String> dao = dao(EntityQuerying.class, String.class)) {
-            populate(dao);
+            populateQuerying(dao);
 
             List<EntityQuerying> results = new QueryBuilder<>(dao)
-                    .where(field("enabled"), ValueOperator.EQUALS, true)
+                    .where(field("enabled"), SingleValueOperator.EQUALS, true)
                     .get();
 
             assertEquals(9, results.size(), "enabled=true should return 9 rows from the unified dataset");
@@ -174,11 +173,11 @@ public interface ContractQuerying extends ContractInterface {
     @Test
     default void querying_whereLike_supportsPrefixSearch() {
         try (Dao<EntityQuerying, String> dao = dao(EntityQuerying.class, String.class)) {
-            populate(dao);
+            populateQuerying(dao);
 
             // Expect: alpha, alpha-2, alphabet, alpha-max
             List<EntityQuerying> results = new QueryBuilder<>(dao)
-                    .where(field("name"), ValueOperator.LIKE, "alpha%")
+                    .where(field("name"), SingleValueOperator.LIKE, "alpha%")
                     .get();
 
             assertEquals(4, results.size(), "alpha% should match alpha, alpha-2, alphabet, alpha-max");
@@ -189,10 +188,10 @@ public interface ContractQuerying extends ContractInterface {
     @Test
     default void querying_whereLike_supportsContainsSearch() {
         try (Dao<EntityQuerying, String> dao = dao(EntityQuerying.class, String.class)) {
-            populate(dao);
+            populateQuerying(dao);
 
             List<EntityQuerying> results = new QueryBuilder<>(dao)
-                    .where(field("name"), ValueOperator.LIKE, "%max%")
+                    .where(field("name"), SingleValueOperator.LIKE, "%max%")
                     .get();
 
             assertEquals(2, results.size(), "%max% should match exactly two rows in the unified dataset");
@@ -205,12 +204,13 @@ public interface ContractQuerying extends ContractInterface {
     @Test
     default void querying_and_combinesMultipleFilters() {
         try (Dao<EntityQuerying, String> dao = dao(EntityQuerying.class, String.class)) {
-            populate(dao);
+            populateQuerying(dao);
 
             // In dataset: category A has alpha(true), alpha-2(false), alphabet(true), alpha-max(false)
             List<EntityQuerying> results = new QueryBuilder<>(dao)
-                    .where(field("category"), ValueOperator.EQUALS, "A")
-                    .and(field("enabled"), ValueOperator.EQUALS, true)
+                    .where(field("category"), SingleValueOperator.EQUALS, "A")
+                    .and(field("enabled"), SingleValueOperator.EQUALS, true)
+
                     .get();
 
             assertEquals(2, results.size(), "category A AND enabled=true should return 2 rows");
@@ -221,7 +221,7 @@ public interface ContractQuerying extends ContractInterface {
     @Test
     default void querying_orderBy_asc_sortsByValueInt() {
         try (Dao<EntityQuerying, String> dao = dao(EntityQuerying.class, String.class)) {
-            populate(dao);
+            populateQuerying(dao);
 
             List<EntityQuerying> results = new QueryBuilder<>(dao)
                     .orderBy(field("valueInt"))
@@ -241,7 +241,7 @@ public interface ContractQuerying extends ContractInterface {
     @Test
     default void querying_orderBy_desc_sortsByValueInt() {
         try (Dao<EntityQuerying, String> dao = dao(EntityQuerying.class, String.class)) {
-            populate(dao);
+            populateQuerying(dao);
 
             List<EntityQuerying> results = new QueryBuilder<>(dao)
                     .orderBy(field("valueInt"))
@@ -261,10 +261,10 @@ public interface ContractQuerying extends ContractInterface {
     @Test
     default void querying_getUnique_returnsNullWhenNoResults() {
         try (Dao<EntityQuerying, String> dao = dao(EntityQuerying.class, String.class)) {
-            populate(dao);
+            populateQuerying(dao);
 
             EntityQuerying result = new QueryBuilder<>(dao)
-                    .where(field("category"), ValueOperator.EQUALS, "__does_not_exist__")
+                    .where(field("category"), SingleValueOperator.EQUALS, "__does_not_exist__")
                     .getUnique();
 
             assertNull(result, "getUnique should return null when there are no results");
@@ -274,10 +274,10 @@ public interface ContractQuerying extends ContractInterface {
     @Test
     default void querying_getUnique_returnsEntityWhenExactlyOneResult() {
         try (Dao<EntityQuerying, String> dao = dao(EntityQuerying.class, String.class)) {
-            populate(dao);
+            populateQuerying(dao);
 
             EntityQuerying result = new QueryBuilder<>(dao)
-                    .where(field("name"), ValueOperator.EQUALS, "beta")
+                    .where(field("name"), SingleValueOperator.EQUALS, "beta")
                     .getUnique();
 
             assertNotNull(result, "getUnique should return the entity when exactly one result exists");
@@ -288,11 +288,11 @@ public interface ContractQuerying extends ContractInterface {
     @Test
     default void querying_getUnique_throwsWhenMultipleResults() {
         try (Dao<EntityQuerying, String> dao = dao(EntityQuerying.class, String.class)) {
-            populate(dao);
+            populateQuerying(dao);
 
             IllegalStateException ex = assertThrows(IllegalStateException.class, () ->
                     new QueryBuilder<>(dao)
-                            .where(field("category"), ValueOperator.EQUALS, "A")
+                            .where(field("category"), SingleValueOperator.EQUALS, "A")
                             .getUnique()
             );
 
@@ -304,10 +304,10 @@ public interface ContractQuerying extends ContractInterface {
     @Test
     default void querying_where_notEquals_filtersOnValueInt() {
         try (Dao<EntityQuerying, String> dao = dao(EntityQuerying.class, String.class)) {
-            populate(dao);
+            populateQuerying(dao);
 
             List<EntityQuerying> results = new QueryBuilder<>(dao)
-                    .where(field("valueInt"), ValueOperator.NOT_EQUALS, 1)
+                    .where(field("valueInt"), SingleValueOperator.NOT_EQUALS, 1)
                     .get();
 
             // Only "alpha" has valueInt=1
@@ -319,10 +319,10 @@ public interface ContractQuerying extends ContractInterface {
     @Test
     default void querying_where_greaterThan_filtersOnValueInt() {
         try (Dao<EntityQuerying, String> dao = dao(EntityQuerying.class, String.class)) {
-            populate(dao);
+            populateQuerying(dao);
 
             List<EntityQuerying> results = new QueryBuilder<>(dao)
-                    .where(field("valueInt"), ValueOperator.GREATER_THAN, 50)
+                    .where(field("valueInt"), SingleValueOperator.GREATER_THAN, 50)
                     .get();
 
             assertEquals(3, results.size(), "valueInt > 50 should match alpha-max(100), beta-max(99), epsilon(101)");
@@ -333,10 +333,10 @@ public interface ContractQuerying extends ContractInterface {
     @Test
     default void querying_where_greaterThanOrEqual_filtersOnValueInt() {
         try (Dao<EntityQuerying, String> dao = dao(EntityQuerying.class, String.class)) {
-            populate(dao);
+            populateQuerying(dao);
 
             List<EntityQuerying> results = new QueryBuilder<>(dao)
-                    .where(field("valueInt"), ValueOperator.GREATER_THAN_OR_EQUAL, 50)
+                    .where(field("valueInt"), SingleValueOperator.GREATER_THAN_OR_EQUAL, 50)
                     .get();
 
             assertEquals(4, results.size(), "valueInt >= 50 should include gammadion(50) as well");
@@ -347,10 +347,10 @@ public interface ContractQuerying extends ContractInterface {
     @Test
     default void querying_where_lessThan_filtersOnValueInt() {
         try (Dao<EntityQuerying, String> dao = dao(EntityQuerying.class, String.class)) {
-            populate(dao);
+            populateQuerying(dao);
 
             List<EntityQuerying> results = new QueryBuilder<>(dao)
-                    .where(field("valueInt"), ValueOperator.LESS_THAN, 0)
+                    .where(field("valueInt"), SingleValueOperator.LESS_THAN, 0)
                     .get();
 
             assertEquals(1, results.size(), "valueInt < 0 should match only gamma-low(-10)");
@@ -361,10 +361,10 @@ public interface ContractQuerying extends ContractInterface {
     @Test
     default void querying_where_lessThanOrEqual_filtersOnValueInt() {
         try (Dao<EntityQuerying, String> dao = dao(EntityQuerying.class, String.class)) {
-            populate(dao);
+            populateQuerying(dao);
 
             List<EntityQuerying> results = new QueryBuilder<>(dao)
-                    .where(field("valueInt"), ValueOperator.LESS_THAN_OR_EQUAL, 0)
+                    .where(field("valueInt"), SingleValueOperator.LESS_THAN_OR_EQUAL, 0)
                     .get();
 
             assertEquals(2, results.size(), "valueInt <= 0 should match gamma(0) and gamma-low(-10)");
@@ -375,12 +375,12 @@ public interface ContractQuerying extends ContractInterface {
     @Test
     default void querying_where_notLike_excludesPrefix_whenNameNotNull() {
         try (Dao<EntityQuerying, String> dao = dao(EntityQuerying.class, String.class)) {
-            populate(dao);
+            populateQuerying(dao);
 
             // Avoid NULL semantics by explicitly requiring name IS NOT NULL.
             List<EntityQuerying> results = new QueryBuilder<>(dao)
                     .where(field("name"), NoValueOperator.IS_NOT_NULL)
-                    .and(field("name"), ValueOperator.NOT_LIKE, "alpha%")
+                    .and(field("name"), SingleValueOperator.NOT_LIKE, "alpha%")
                     .get();
 
             assertTrue(results.stream().allMatch(e -> e.name() != null && !e.name().startsWith("alpha")),
@@ -391,10 +391,10 @@ public interface ContractQuerying extends ContractInterface {
     @Test
     default void querying_where_in_filtersOnCategory() {
         try (Dao<EntityQuerying, String> dao = dao(EntityQuerying.class, String.class)) {
-            populate(dao);
+            populateQuerying(dao);
 
             List<EntityQuerying> results = new QueryBuilder<>(dao)
-                    .where(field("category"), ValueOperator.IN, List.of("A", "B"))
+                    .where(field("category"), MultiOperator.IN, List.of("A", "B"))
                     .get();
 
             assertEquals(7, results.size(), "category IN (A,B) should match all A and B rows");
@@ -406,12 +406,12 @@ public interface ContractQuerying extends ContractInterface {
     @Test
     default void querying_where_notIn_filtersOnCategory_whenCategoryNotNull() {
         try (Dao<EntityQuerying, String> dao = dao(EntityQuerying.class, String.class)) {
-            populate(dao);
+            populateQuerying(dao);
 
             // Avoid NULL semantics by explicitly requiring category IS NOT NULL.
             List<EntityQuerying> results = new QueryBuilder<>(dao)
                     .where(field("category"), NoValueOperator.IS_NOT_NULL)
-                    .and(field("category"), ValueOperator.NOT_IN, List.of("A", "B"))
+                    .and(field("category"), MultiOperator.NOT_IN, List.of("A", "B"))
                     .get();
 
             assertEquals(6, results.size(), "category NOT IN (A,B) and category IS NOT NULL should match C/D/E/N rows");
@@ -423,11 +423,11 @@ public interface ContractQuerying extends ContractInterface {
     @Test
     default void querying_where_between_filtersOnValueInt() {
         try (Dao<EntityQuerying, String> dao = dao(EntityQuerying.class, String.class)) {
-            populate(dao);
+            populateQuerying(dao);
 
             // Inclusive semantics expected for BETWEEN.
             List<EntityQuerying> results = new QueryBuilder<>(dao)
-                    .where(field("valueInt"), ValueOperator.BETWEEN, List.of(2, 20))
+                    .where(field("valueInt"), RangeOperator.BETWEEN, 2, 20)
                     .get();
 
             assertEquals(7, results.size(), "valueInt BETWEEN 2 AND 20 should match 7 rows in the unified dataset");
@@ -439,10 +439,10 @@ public interface ContractQuerying extends ContractInterface {
     @Test
     default void querying_where_notBetween_filtersOnValueInt() {
         try (Dao<EntityQuerying, String> dao = dao(EntityQuerying.class, String.class)) {
-            populate(dao);
+            populateQuerying(dao);
 
             List<EntityQuerying> results = new QueryBuilder<>(dao)
-                    .where(field("valueInt"), ValueOperator.NOT_BETWEEN, List.of(2, 20))
+                    .where(field("valueInt"), RangeOperator.NOT_BETWEEN, 2, 20)
                     .get();
 
             assertEquals(7, results.size(), "valueInt NOT BETWEEN 2 AND 20 should match the remaining 7 rows");
@@ -451,35 +451,14 @@ public interface ContractQuerying extends ContractInterface {
         }
     }
 
-    @ParameterizedTest
-    @MethodSource("betweenInvalidLists")
-    default void querying_where_between_throws_on_list_other_than_two_size(List<Integer> values) {
-        try (Dao<EntityQuerying, String> dao = dao(EntityQuerying.class, String.class)) {
-            populate(dao);
-
-            assertThrows(IllegalArgumentException.class, () ->
-                    new QueryBuilder<>(dao)
-                            .where(field("valueInt"), ValueOperator.BETWEEN, values)
-                            .get()
-            );
-        }
-    }
-
-    static Stream<List<Integer>> betweenInvalidLists() {
-        return Stream.of(
-                List.of(2),
-                List.of(2, 20, 30)
-        );
-    }
-
     @Test
     default void querying_where_between_accepts_two_values() {
         try (Dao<EntityQuerying, String> dao = dao(EntityQuerying.class, String.class)) {
-            populate(dao);
+            populateQuerying(dao);
 
             assertDoesNotThrow(() ->
                     new QueryBuilder<>(dao)
-                            .where(field("valueInt"), ValueOperator.BETWEEN, List.of(2, 30))
+                            .where(field("valueInt"), RangeOperator.BETWEEN, 2, 30)
                             .get()
             );
         }
@@ -488,7 +467,7 @@ public interface ContractQuerying extends ContractInterface {
     @Test
     default void querying_where_isNull_filtersOnName() {
         try (Dao<EntityQuerying, String> dao = dao(EntityQuerying.class, String.class)) {
-            populate(dao);
+            populateQuerying(dao);
 
             List<EntityQuerying> results = new QueryBuilder<>(dao)
                     .where(field("name"), NoValueOperator.IS_NULL)
@@ -502,7 +481,7 @@ public interface ContractQuerying extends ContractInterface {
     @Test
     default void querying_where_isNotNull_filtersOnCategory() {
         try (Dao<EntityQuerying, String> dao = dao(EntityQuerying.class, String.class)) {
-            populate(dao);
+            populateQuerying(dao);
             int expected = dataset().stream().map(EntityQuerying::category).filter(Objects::nonNull).toList().size();
 
             List<EntityQuerying> results = new QueryBuilder<>(dao)

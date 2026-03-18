@@ -90,7 +90,7 @@ public interface ContractCrud extends ContractInterface {
             // verify non-PK attributes are updated to match newEntity
             EntityCrud after = dao.get(newId);
             assertEquals(newId, after.id(), "id should match the new primary key");
-            assertEquals("second", after.name(), "name should be updated by update(old,new)");
+            assertEquals("second", after.name(), "columnName should be updated by update(old,new)");
             assertEquals(99, after.valueInt(), "valueInt should be updated by update(old,new)");
         }
     }

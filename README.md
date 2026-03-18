@@ -14,14 +14,7 @@
 
 > This library is intentionally lightweight: it does not try to be a full ORM.
 
-## Install
-
-### Gradle (Kotlin DSL)
-
-```kotlin
-repositories { mavenCentral() }
-dependencies { implementation("io.github.david-auk:fluid-jdbc:0.1.3") }
-```
+## [Install the Maven package](https://central.sonatype.com/artifact/io.github.david-auk/fluid-jdbc)
 
 ## Quickstart (minimal example)
 
@@ -252,9 +245,7 @@ Declares table inheritance.
 @TableInherits(BaseEntity.class)
 ```
 
-Rules:
-- Entity must actually `extends BaseEntity`
-- PK may be defined on the base class
+[Read more about inheritance](#inheritance)
 
 ---
 
@@ -377,7 +368,7 @@ It is intentionally simple:
 try (Dao<EntityQuerying, String> dao = DAOFactory.createDAO(EntityQuerying.class)) {
 
     List<EntityQuerying> results = new QueryBuilder<>(dao)
-        .where(EntityQuerying.class.getDeclaredField("category"), ValueOperator.EQUALS, "A")
+        .where(EntityQuerying.class.getDeclaredField("category"), SingleValueOperator.EQUALS, "A")
         .get();
 }
 ```
@@ -402,7 +393,7 @@ try (Dao<SimpleEntity, String> dao = DAOFactory.createDAO(SimpleEntity.class)) {
 
     // Query: find all rows where name starts with "hello"
     List<SimpleEntity> hellos = new QueryBuilder<SimpleEntity, String>(dao)
-        .where(SimpleEntity.class.getDeclaredField("name"), ValueOperator.LIKE, "hello%")
+        .where(SimpleEntity.class.getDeclaredField("name"), SingleValueOperator.LIKE, "hello%")
         .orderBy(SimpleEntity.class.getDeclaredField("id"))
         .asc()
         .get();
@@ -424,16 +415,18 @@ ORDER BY id ASC;
 
 ### WHERE filters
 
-`QueryBuilder` supports two operator categories:
+`QueryBuilder` supports multiple operator categories:
 
-- **`ValueOperator`**: operators that require a value (e.g. `=`, `LIKE`, `IN`, `BETWEEN`)
+- **`SingleValueOperator`**: operators that require exactly one value (e.g. `=`, `<>`, `>`, `>=`, `<`, `<=`, `LIKE`, `NOT LIKE`)
+- **`MultiOperator`**: operators that require a list of values (e.g. `IN`, `NOT IN`)
+- **`RangeOperator`**: operators that require two values (e.g. `BETWEEN`, `NOT BETWEEN`)
 - **`NoValueOperator`**: operators that do not require a value (e.g. `IS NULL`, `IS NOT NULL`)
 
-#### Equality
+#### Equality / inequality
 
 ```java
 new QueryBuilder<>(dao)
-    .where(EntityQuerying.class.getDeclaredField("category"), ValueOperator.EQUALS, "A")
+    .where(EntityQuerying.class.getDeclaredField("category"), SingleValueOperator.EQUALS, "A")
     .get();
 ```
 
@@ -443,11 +436,25 @@ Equivalent SQL:
 WHERE category = 'A'
 ```
 
+#### Numeric comparisons
+
+```java
+new QueryBuilder<>(dao)
+    .where(EntityQuerying.class.getDeclaredField("valueInt"), SingleValueOperator.GREATER_THAN, 50)
+    .get();
+```
+
+Equivalent SQL:
+
+```sql
+WHERE value_int > 50
+```
+
 #### LIKE / NOT LIKE
 
 ```java
 new QueryBuilder<>(dao)
-    .where(EntityQuerying.class.getDeclaredField("name"), ValueOperator.LIKE, "alpha%")
+    .where(EntityQuerying.class.getDeclaredField("name"), SingleValueOperator.LIKE, "alpha%")
     .get();
 ```
 
@@ -465,7 +472,7 @@ For `IN` and `NOT IN`, pass a `List<?>` of values.
 
 ```java
 new QueryBuilder<>(dao)
-    .where(EntityQuerying.class.getDeclaredField("category"), ValueOperator.IN, List.of("A", "B"))
+    .where(EntityQuerying.class.getDeclaredField("category"), MultiOperator.IN, List.of("A", "B"))
     .get();
 ```
 
@@ -475,13 +482,15 @@ Equivalent SQL:
 WHERE category IN ('A', 'B')
 ```
 
+> Note on NULL semantics: `NOT_EQUALS`, `NOT_IN`, `NOT_LIKE`, etc. follow SQL’s NULL rules. If you want to avoid NULL edge-cases, combine filters with an explicit `IS NOT NULL`.
+
 #### BETWEEN / NOT BETWEEN
 
-For `BETWEEN` and `NOT BETWEEN`, pass a `List<?>` of **exactly two** values.
+For `BETWEEN` and `NOT BETWEEN`, pass **two** values.
 
 ```java
 new QueryBuilder<>(dao)
-    .where(EntityQuerying.class.getDeclaredField("valueInt"), ValueOperator.BETWEEN, List.of(2, 20))
+    .where(EntityQuerying.class.getDeclaredField("valueInt"), RangeOperator.BETWEEN, 2, 20)
     .get();
 ```
 
@@ -490,8 +499,6 @@ Equivalent SQL:
 ```sql
 WHERE value_int BETWEEN 2 AND 20
 ```
-
-If the list does not have size 2, `QueryBuilder` throws an `IllegalArgumentException`.
 
 #### IS NULL / IS NOT NULL
 
@@ -509,16 +516,16 @@ Equivalent SQL:
 WHERE name IS NULL
 ```
 
-> Note on NULL semantics: `NOT_EQUALS`, `NOT_IN`, `NOT_LIKE`, etc. follow SQL’s NULL rules. If you want to avoid NULL edge-cases, combine filters with an explicit `IS NOT NULL`.
-
 ### Combining filters
 
 Filters are combined using `AND`.
 
+> Note: `.and` is an alias to `.where` and is not necessary. It's there to keep queries readable
+
 ```java
 new QueryBuilder<>(dao)
-    .where(EntityQuerying.class.getDeclaredField("category"), ValueOperator.EQUALS, "A")
-    .and(EntityQuerying.class.getDeclaredField("enabled"), ValueOperator.EQUALS, true)
+    .where(EntityQuerying.class.getDeclaredField("category"), SingleValueOperator.EQUALS, "A")
+    .and(EntityQuerying.class.getDeclaredField("enabled"), SingleValueOperator.EQUALS, true)
     .get();
 ```
 
@@ -561,7 +568,7 @@ ORDER BY value_int DESC
 
 ```java
 EntityQuerying result = new QueryBuilder<>(dao)
-    .where(EntityQuerying.class.getDeclaredField("name"), ValueOperator.EQUALS, "beta")
+    .where(EntityQuerying.class.getDeclaredField("name"), SingleValueOperator.EQUALS, "beta")
     .getUnique();
 ```
 
@@ -571,6 +578,86 @@ Behavior:
 - Returns `null` if no rows match
 - Throws `IllegalStateException` if multiple rows match
 
+### Querying across Foreign Keys
+
+If a field is annotated as a [Foreign key](#foreign-keys), `QueryBuilder` can use fields from the referenced entity in the WHERE clause.
+
+Example (conceptually): query `EntityQueryLocal` rows by a property on `EntityQueryForeign`.
+
+```java
+try (Dao<EntityQueryLocal, String> localDao = DAOFactory.createDAO(EntityQueryLocal.class)) {
+
+    List<EntityQueryLocal> results = new QueryBuilder<>(localDao)
+        // Filter local rows by a field on the referenced foreign entity
+        .where(EntityQueryForeign.class.getDeclaredField("name"), SingleValueOperator.EQUALS, "netherlands")
+        .get();
+}
+```
+
+This translates to a query equivalent to:
+
+```sql
+SELECT local_query_entity.* 
+FROM local_query_entity 
+JOIN foreign_query_entity 
+  ON local_query_entity.foreign_id = foreign_query_entity.id 
+WHERE foreign_query_entity.name = ('netherlands')
+```
+
+#### Combining local and foreign filters
+
+You can combine normal local-table filters with foreign-table filters using `.and(...)`.
+
+```java
+try (Dao<EntityLocal, String> localDao = DAOFactory.createDAO(EntityLocal.class)) {
+
+    List<EntityLocal> results = new QueryBuilder<>(localDao)
+        .where(EntityForeign.class.getDeclaredField("name"), SingleValueOperator.EQUALS, "netherlands")
+        .and(EntityLocal.class.getDeclaredField("value"), SingleValueOperator.GREATER_THAN, 10)
+        .get();
+}
+```
+
+Conceptual SQL:
+
+```sql
+SELECT local_test_table.*
+FROM local_test_table
+JOIN foreign_test_table
+  ON local_test_table.foreign_entity_id = foreign_test_table.id
+WHERE foreign_test_table.name = 'netherlands'
+  AND local_test_table.value > 10;
+```
+
+### Querying across Inheritance
+
+If an entity uses `@TableInherits(Base.class)`, `QueryBuilder` can also filter child rows by fields declared on the inherited base class.
+
+That means a child DAO can be queried using either:
+
+- fields declared on the child entity itself
+- fields declared on the inherited base entity
+
+Example child query using a base field:
+
+```java
+try (Dao<EntityInheritChild, String> childDao = DAOFactory.createDAO(EntityInheritChild.class)) {
+
+    List<EntityInheritChild> results = new QueryBuilder<>(childDao)
+        .where(EntityInheritBase.class.getDeclaredField("name"), SingleValueOperator.EQUALS, "alpha")
+        .get();
+}
+```
+
+Conceptual SQL:
+
+```sql
+SELECT inherit_child.*
+FROM inherit_child
+JOIN inherit_base
+  ON inherit_child.id = inherit_base.id
+WHERE inherit_base.name = 'alpha';
+```
 ### Design goals
 
 The QueryBuilder is deliberately minimal and predictable:
@@ -640,9 +727,7 @@ try (Dao<EntityForeign, String> foreignDao = DAOFactory.createDAO(EntityForeign.
     localDao.add(new EntityLocal("local_1", fk));
 
     EntityLocal read = localDao.get("local_1");
-    // Depending on your hydration policy, `read.foreignEntity()` will be either:
-    // - fully hydrated (name + value), OR
-    // - null
+    // read.foreignObject is now fully hydrated
 }
 ```
 
@@ -710,10 +795,20 @@ erDiagram
   inherit_base ||--|| inherit_child : "shared PK"
 ```
 
+| Inheritance concept            | How it works                                                                                                                                                                                                                                                                                         |
+|--------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| PostgreSQL `INHERITS`          | A PostgreSQL database feature where a child table can inherit columns from a parent table at the schema level. This is database-specific behavior.                                                                                                                                                   |
+| `fluid-jdbc` inheritance model | `fluid-jdbc` does **not** use PostgreSQL `INHERITS`. Instead, it models inheritance through regular Java inheritance plus multiple related tables in the database.                                                                                                                                   |
+| Java class relationship        | When you annotate a child entity with `@TableInherits(Base.class)`, the child class must actually extend that base class in Java.                                                                                                                                                                    |
+| Shared primary key             | The child row must reuse the exact same primary key value as the base row. This is a required part of the inheritance model, not optional behavior. If the child does not declare its own `@PrimaryKey`, `fluid-jdbc` must resolve and enforce that inherited primary key from the base class chain. |
+| Child constructor requirement  | The constructor marked with `@TableConstructor` should take the base entity as its first parameter so the child can initialize `super(...)` using that same inherited primary key value.                                                                                                             |
+| Insert/update behavior         | In practice, base and child records are separate rows in separate tables, so write operations are typically coordinated together using `DaoTransactional`.                                                                                                                                           |
+| Querying behavior              | Reading a child entity requires combining base-table data with child-table data, because the full object is represented across both tables.                                                                                                                                                          |
+
 
 Rules:
 
 - If `@TableInherits(Base.class)` is present, the entity must actually `extends Base`.
-- The child may omit `@PrimaryKey` as long as a PK exists somewhere on the declared base chain.
+- The child may omit `@PrimaryKey` only if a primary key exists on the declared base chain and that inherited key is enforced as the exact same key used by the child table.
 
 [Transactional insert](#daotransactional) (base + child in one commit) is typically required.

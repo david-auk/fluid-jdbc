@@ -61,7 +61,7 @@ dependencies {
     testImplementation("org.junit.jupiter:junit-jupiter")
 
     // Testcontainers core + JUnit 5 integration
-    testImplementation("org.testcontainers:testcontainers:1.19.8")
+    testImplementation("org.testcontainers:testcontainers:2.0.3")
     testImplementation("org.testcontainers:junit-jupiter:1.19.8")
 
     // Database modules
@@ -71,6 +71,10 @@ dependencies {
     // JDBC drivers used by your code/tests
     testRuntimeOnly("org.postgresql:postgresql:42.7.3")
     testRuntimeOnly("com.mysql:mysql-connector-j:8.4.0")
+
+    testImplementation("org.apache.logging.log4j:log4j-api:2.25.3")
+    testImplementation("org.apache.logging.log4j:log4j-core:2.25.3")
+    testImplementation("org.apache.logging.log4j:log4j-slf4j-impl:2.25.3")
 }
 
 tasks.test { useJUnitPlatform() }

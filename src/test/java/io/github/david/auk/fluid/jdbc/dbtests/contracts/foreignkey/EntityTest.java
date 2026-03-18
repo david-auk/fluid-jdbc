@@ -17,4 +17,8 @@ public class EntityTest {
         assertDoesNotThrow(() -> TableEntity.validateEntity(EntityForeign.class));
     }
 
+    @Test
+    void validateEntityForeignSecond() {
+        assertDoesNotThrow(() -> TableEntity.validateEntity(EntityForeignSecond.class));
+    }
 }

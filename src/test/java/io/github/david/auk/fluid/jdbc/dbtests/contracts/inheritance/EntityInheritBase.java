@@ -15,12 +15,36 @@ public class EntityInheritBase implements TableEntity {
     @TableColumn
     private final String id;
 
+    @TableColumn
+    private final Boolean active;
+
+    @TableColumn
+    private final Integer amount;
+
+    @TableColumn
+    private final String name;
+
     @TableConstructor
-    public EntityInheritBase(String id) {
+    public EntityInheritBase(String id, Boolean active, Integer amount, String name) {
         this.id = Objects.requireNonNull(id, "Non null");
+        this.active = active;
+        this.amount = amount;
+        this.name = Objects.requireNonNull(name, "name");
     }
 
     public String getId() {
         return id;
+    }
+
+    public Boolean isActive() {
+        return active;
+    }
+
+    public Integer getAmount() {
+        return amount;
+    }
+
+    public String getName() {
+        return name;
     }
 }

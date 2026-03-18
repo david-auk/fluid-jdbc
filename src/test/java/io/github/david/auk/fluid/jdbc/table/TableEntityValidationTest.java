@@ -329,7 +329,7 @@ class TableEntityValidationTest {
     @TableName("inherit_child")
     @TableInherits(InheritBaseEntity.class)
     static class InheritChildEntity extends InheritBaseEntity implements TableEntity {
-        @TableColumn(name = "value_int")
+        @TableColumn(columnName = "value_int")
         private final Integer valueInt;
 
         @TableConstructor
@@ -373,7 +373,7 @@ class TableEntityValidationTest {
     @TableName("inherit_child_method_pk")
     @TableInherits(InheritBaseMethodPkEntity.class)
     static class InheritChildMethodPkEntity extends InheritBaseMethodPkEntity implements TableEntity {
-        @TableColumn(name = "value_int")
+        @TableColumn(columnName = "value_int")
         private final Integer valueInt;
 
         @TableConstructor
@@ -415,7 +415,7 @@ class TableEntityValidationTest {
     @TableName("inherit_child_no_pk")
     @TableInherits(InheritBaseNoPkEntity.class)
     static class InheritChildNoPkEntity extends InheritBaseNoPkEntity implements TableEntity {
-        @TableColumn(name = "value_int")
+        @TableColumn(columnName = "value_int")
         private final Integer valueInt;
 
         @TableConstructor

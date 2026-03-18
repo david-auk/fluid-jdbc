@@ -1,7 +1,6 @@
 package io.github.david.auk.fluid.jdbc.dbtests.support;
 
 import io.github.david.auk.fluid.jdbc.components.Database;
-import io.github.david.auk.fluid.jdbc.dbtests.contracts.ContractInterface;
 import io.github.david.auk.fluid.jdbc.dbtests.contracts.crud.ContractCrud;
 import io.github.david.auk.fluid.jdbc.dbtests.contracts.foreignkey.ContractForeignKey;
 import io.github.david.auk.fluid.jdbc.dbtests.contracts.inheritance.ContractInheritance;
@@ -12,11 +11,18 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.sql.Connection;
 import java.sql.SQLException;
-import java.sql.Statement;
 
 @Testcontainers
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-public abstract class AbstractJdbcContainerTest implements ContractCrud, ContractForeignKey, ContractInheritance, ContractQuerying {
+public abstract class AbstractJdbcContainerTest implements
+
+        // Basic DAO tests
+        ContractCrud,
+        ContractForeignKey,
+        ContractInheritance,
+
+        // Querying tests
+        ContractQuerying {
 
     private JdbcDatabaseContainer<?> container;
 
@@ -43,7 +49,9 @@ public abstract class AbstractJdbcContainerTest implements ContractCrud, Contrac
     protected String[] dropAllTablesSql() {
         return new String[]{
                 // FK tables first
-                "DROP TABLE IF EXISTS local_test_table", "DROP TABLE IF EXISTS foreign_test_table",
+                "DROP TABLE IF EXISTS local_test_table",
+                "DROP TABLE IF EXISTS foreign_second_test_table",
+                "DROP TABLE IF EXISTS foreign_test_table",
 
                 // CRUD
                 "DROP TABLE IF EXISTS crud_test_table",
@@ -51,8 +59,9 @@ public abstract class AbstractJdbcContainerTest implements ContractCrud, Contrac
                 // Querying
                 "DROP TABLE IF EXISTS query_test_table",
 
-                // Inheritance (placeholder)
-                "DROP TABLE IF EXISTS inherit_child", "DROP TABLE IF EXISTS inherit_base"};
+                // Inheritance
+                "DROP TABLE IF EXISTS inherit_child",
+                "DROP TABLE IF EXISTS inherit_base"};
     }
 
     /**
@@ -81,36 +90,56 @@ public abstract class AbstractJdbcContainerTest implements ContractCrud, Contrac
                 )
                 """,
 
-                // Foreign key tables: referenced table first
+                // Foreign key tables: referenced tables first
                 """
                 CREATE TABLE foreign_test_table (
-                    name  VARCHAR(255) NOT NULL,
-                    value INTEGER      NOT NULL,
-                    CONSTRAINT pk_foreign_test_table PRIMARY KEY (name)
+                    id VARCHAR(36) PRIMARY KEY,
+                    name VARCHAR(255) NOT NULL,
+                    value INTEGER NOT NULL
                 )
-                """, """
+                """,
+                """
+                CREATE TABLE foreign_second_test_table (
+                    id VARCHAR(36) PRIMARY KEY,
+                    is_active BOOLEAN,
+                    value INTEGER
+                )
+                """,
+                """
                 CREATE TABLE local_test_table (
-                    name                 VARCHAR(255) NOT NULL,
-                    foreign_entity_name  VARCHAR(255) NOT NULL,
+                    id VARCHAR(36) PRIMARY KEY,
+                    foreign_entity_id VARCHAR(36) NOT NULL,
+                    foreign_second_entity_id VARCHAR(36) NOT NULL,
+                    value INTEGER,
 
-                    CONSTRAINT pk_local_test_table PRIMARY KEY (name),
                     CONSTRAINT fk_local_foreign_entity
-                        FOREIGN KEY (foreign_entity_name)
-                        REFERENCES foreign_test_table (name)
+                        FOREIGN KEY (foreign_entity_id)
+                        REFERENCES foreign_test_table (id)
+                        ON UPDATE CASCADE
+                        ON DELETE RESTRICT,
+
+                    CONSTRAINT fk_local_foreign_second_entity
+                        FOREIGN KEY (foreign_second_entity_id)
+                        REFERENCES foreign_second_test_table (id)
                         ON UPDATE CASCADE
                         ON DELETE RESTRICT
                 )
                 """,
 
                 // Inheritance
-                // Child `inherits` base by sharing the same PK and referencing base(id)
                 """
                 CREATE TABLE inherit_base (
-                    id VARCHAR(255) PRIMARY KEY
+                    id VARCHAR(255) PRIMARY KEY,
+                    active BOOLEAN NOT NULL,
+                    amount INT NOT NULL,
+                    name VARCHAR(255) NOT NULL
                 )""", """
                 CREATE TABLE inherit_child (
                     id VARCHAR(255) PRIMARY KEY,
                     value_int INT NOT NULL,
+                    enabled BOOLEAN NOT NULL,
+                    score INT NOT NULL,
+                    description VARCHAR(255) NOT NULL,
                     CONSTRAINT fk_inherit_child_base
                         FOREIGN KEY (id)
                         REFERENCES inherit_base(id)

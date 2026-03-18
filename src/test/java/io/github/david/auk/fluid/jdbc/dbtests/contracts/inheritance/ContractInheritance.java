@@ -30,10 +30,10 @@ public interface ContractInheritance extends ContractInterface {
         try (DaoTransactional<EntityInheritBase, String> baseDao = daoTransactional(EntityInheritBase.class, String.class);
              DaoTransactional<EntityInheritChild, String> childDao = daoTransactional(EntityInheritChild.class, String.class)) {
 
-            EntityInheritBase base = new EntityInheritBase(id);
+            EntityInheritBase base = new EntityInheritBase(id, true, 42, "base-name");
             baseDao.add(base);
 
-            EntityInheritChild child = new EntityInheritChild(base, 7);
+            EntityInheritChild child = new EntityInheritChild(base, 7, false, 99, "child-description");
             childDao.add(child);
 
             commit();
@@ -44,7 +44,13 @@ public interface ContractInheritance extends ContractInterface {
             EntityInheritChild read = childDao.get(id);
             assertNotNull(read, "childDao.get(id) should not return null");
             assertEquals(id, read.getId(), "child should share the same PK as base");
-            assertEquals(7, read.getValueInt(), "child non-PK column should be readable");
+            assertTrue(read.isActive(), "child should expose inherited base boolean field");
+            assertEquals(42, read.getAmount(), "child should expose inherited base int field");
+            assertEquals("base-name", read.getName(), "child should expose inherited base string field");
+            assertEquals(7, read.getValueInt(), "child Integer column should be readable");
+            assertFalse(read.isEnabled(), "child boolean column should be readable");
+            assertEquals(99, read.getScore(), "child int column should be readable");
+            assertEquals("child-description", read.getDescription(), "child string column should be readable");
         }
     }
 
@@ -53,8 +59,8 @@ public interface ContractInheritance extends ContractInterface {
         String id = UUID.randomUUID().toString();
 
         try (Dao<EntityInheritChild, String> childDao = dao(EntityInheritChild.class, String.class)) {
-            EntityInheritBase phantomBase = new EntityInheritBase(id);
-            EntityInheritChild child = new EntityInheritChild(phantomBase, 1);
+            EntityInheritBase phantomBase = new EntityInheritBase(id, false, 10, "phantom-base");
+            EntityInheritChild child = new EntityInheritChild(phantomBase, 1, true, 15, "phantom-child");
 
             assertThrows(RuntimeException.class, () -> childDao.add(child),
                     "adding child should fail when base row does not exist (FK constraint)");
@@ -68,8 +74,8 @@ public interface ContractInheritance extends ContractInterface {
         try (DaoTransactional<EntityInheritBase, String> baseDao = daoTransactional(EntityInheritBase.class, String.class);
              DaoTransactional<EntityInheritChild, String> childDao = daoTransactional(EntityInheritChild.class, String.class)) {
 
-            EntityInheritBase base = new EntityInheritBase(id);
-            EntityInheritChild child = new EntityInheritChild(base, 5);
+            EntityInheritBase base = new EntityInheritBase(id, true, 5, "cascade-base");
+            EntityInheritChild child = new EntityInheritChild(base, 5, true, 77, "cascade-child");
 
             baseDao.add(base);
             childDao.add(child);
