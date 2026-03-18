@@ -106,14 +106,10 @@ public final class UpdateClause {
 
                 try {
                     Object fieldValue = reflectField.get(updatedEntity);
-
-                    if (fieldValue instanceof TableEntity foreignObject) {
-                        Class<? extends TableEntity> foreignClass = foreignObject.getClass();
-
-                        TypedField<TE, ? extends TableEntity> foreignReferenceColumn =
-                                TableUtils.getLocalFieldOfTypeForeignEntity(entityClass, foreignClass);
-
-                        updatedValue = TableUtils.getForeignColumnValue(updatedEntity, foreignReferenceColumn);
+                    if (fieldValue instanceof TableEntity) {
+                        @SuppressWarnings("unchecked")
+                        TypedField<TE, TableEntity> foreignTypedField = (TypedField<TE, TableEntity>) typedField;
+                        updatedValue = TableUtils.getForeignColumnValue(updatedEntity, foreignTypedField);
                     } else {
                         updatedValue = fieldValue;
                     }

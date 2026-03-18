@@ -2,10 +2,13 @@ package io.github.david.auk.fluid.jdbc.components.tables.utils.query.sql.clause;
 
 import io.github.david.auk.fluid.jdbc.components.daos.querying.filters.FilterCriterion;
 import io.github.david.auk.fluid.jdbc.components.daos.querying.filters.ForeignFilterTypedField;
+import io.github.david.auk.fluid.jdbc.components.daos.querying.relations.EntityRelation;
 import io.github.david.auk.fluid.jdbc.components.tables.utils.TableUtils;
 
 import java.util.List;
 import java.util.StringJoiner;
+import java.util.HashSet;
+import java.util.Set;
 
 public final class JoinClause {
 
@@ -18,31 +21,47 @@ public final class JoinClause {
 
 
         StringJoiner joinClauses = new StringJoiner(" ");
+        Set<String> addedTables = new HashSet<>();
 
         for (FilterCriterion<?, ?> criterion : criteria) {
-            appendJoin(joinClauses, criterion);
+            appendJoin(joinClauses, addedTables, criterion);
         }
 
         return joinClauses.toString();
     }
 
-    private static void appendJoin(StringJoiner joinClauses, FilterCriterion<?, ?> criterion) {
+    private static void appendJoin(StringJoiner joinClauses, Set<String> addedTables, FilterCriterion<?, ?> criterion) {
 
         if (criterion.getFilterTypedField() instanceof ForeignFilterTypedField<?, ?> foreignFilterTypedField) {
-            String referencedTableName = TableUtils.getTableName(foreignFilterTypedField.getForeignClass());
-            String referencedColumn = foreignFilterTypedField.getReferencedColumn();
 
-            String localTableName = TableUtils.getTableName(foreignFilterTypedField.getLocalClass());
-            String foreignKeyColumnName = foreignFilterTypedField.getForeignKeyColumn();
+            EntityRelation<?, ?> relation = foreignFilterTypedField.entityRelation();
+            String foreignTableName = relation.foreignTableName();
 
-            joinClauses.add(generateJoin(referencedTableName, referencedColumn, localTableName, foreignKeyColumnName));
+            // Check if we already joined the table
+            if (addedTables.contains(foreignTableName)) {
+                return;
+            }
+
+            joinClauses.add(generateJoin(foreignFilterTypedField.entityRelation()));
+
+            // Mark this reference table as "joined" for new join appends
+            addedTables.add(foreignTableName);
         }
     }
 
-    private static String generateJoin(String referencedTableName, String referencedColumn, String localTableName, String foreignKeyColumnName) {
-        return "JOIN " + referencedTableName + " ON "
-                + referencedTableName + "." + referencedColumn
+    private static String generateJoin(EntityRelation<?, ?> entityRelation) {
+        return generateJoin(
+                entityRelation.foreignTableName(),
+                entityRelation.foreignJoinColumn(),
+                entityRelation.localTableName(),
+                entityRelation.localJoinColumn()
+        );
+    }
+
+    private static String generateJoin(String foreignTableName, String foreignTableJoinColumn, String localTableName, String localTableJoinColumn) {
+        return "JOIN " + foreignTableName + " ON "
+                + foreignTableName + "." + foreignTableJoinColumn
                 + " = "
-                + localTableName + "." + foreignKeyColumnName;
+                + localTableName + "." + localTableJoinColumn;
     }
 }

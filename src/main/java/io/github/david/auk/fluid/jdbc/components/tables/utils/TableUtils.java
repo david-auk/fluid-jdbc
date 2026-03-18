@@ -2,6 +2,8 @@ package io.github.david.auk.fluid.jdbc.components.tables.utils;
 
 import io.github.david.auk.fluid.jdbc.components.tables.TableEntity;
 import io.github.david.auk.fluid.jdbc.internal.tables.meta.TypedField;
+import io.github.david.auk.fluid.jdbc.components.daos.querying.relations.EntityRelation;
+import io.github.david.auk.fluid.jdbc.components.daos.querying.relations.RelationKind;
 
 import java.lang.reflect.AccessibleObject;
 import java.lang.reflect.Field;
@@ -45,8 +47,11 @@ public final class TableUtils {
         return ColumnResolver.getForeignColumnName(localTypedField);
     }
 
-    public static <LC extends TableEntity, FC extends TableEntity> TypedField<LC, FC> getLocalFieldOfTypeForeignEntity(Class<LC> entityToBeQueried, Class<FC> foreignClass) {
-        return ColumnResolver.getLocalFieldOfTypeForeignEntity(entityToBeQueried, foreignClass);
+    public static <LC extends TableEntity, FC extends TableEntity> EntityRelation<LC, FC> resolveEntityRelation(
+            Class<LC> entityToBeQueried,
+            Class<FC> foreignClass
+    ) {
+        return ColumnResolver.resolveEntityRelation(entityToBeQueried, foreignClass);
     }
 
     public static Class<? extends TableEntity> getParentTableEntityClass(Class<? extends TableEntity> tableEntityClass) {

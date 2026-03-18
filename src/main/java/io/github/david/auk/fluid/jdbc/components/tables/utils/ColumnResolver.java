@@ -3,6 +3,8 @@ package io.github.david.auk.fluid.jdbc.components.tables.utils;
 import io.github.david.auk.fluid.jdbc.annotations.table.constructor.TableInherits;
 import io.github.david.auk.fluid.jdbc.annotations.table.field.ForeignKey;
 import io.github.david.auk.fluid.jdbc.annotations.table.field.TableColumn;
+import io.github.david.auk.fluid.jdbc.components.daos.querying.relations.EntityRelation;
+import io.github.david.auk.fluid.jdbc.components.daos.querying.relations.RelationKind;
 import io.github.david.auk.fluid.jdbc.components.tables.TableEntity;
 import io.github.david.auk.fluid.jdbc.internal.tables.meta.TypedField;
 import java.lang.reflect.Field;
@@ -33,80 +35,73 @@ final class ColumnResolver {
     }
 
     public static <LC extends TableEntity, FC extends TableEntity> String getForeignColumnName(TypedField<LC, FC> localTypedField) {
-
-        Class<FC> foreignEntityClass = localTypedField.valueType();
-
-        ForeignKey foreignKey = localTypedField.reflect().getAnnotation(ForeignKey.class);
-
-        // Try the overwrite if filled
-        if (foreignKey != null && !foreignKey.overwriteJoinColumnWithUniqueColumnName().isEmpty()) {
-            return foreignKey.overwriteJoinColumnWithUniqueColumnName();
-        }
-
-        // Default to primaryKey column name
-        return TableUtils.getPrimaryKeyColumnName(foreignEntityClass);
+        EntityRelation<LC, FC> relation = resolveEntityRelation(localTypedField.owner(), localTypedField.valueType());
+        return getColumnName(relation.anchorField());
     }
 
     public static <LC extends TableEntity, FC extends TableEntity> Object getForeignColumnValue(LC entity, TypedField<LC, FC> field) {
         return getForeignColumnValueRecursive(entity, field, new ArrayList<>());
     }
 
-    private static Object getForeignColumnValueRecursive(TableEntity entity, TypedField<?, ?> field, List<Field> visitedFields) {
-        Objects.requireNonNull(entity, "entity");
+    private static <LC extends TableEntity, FC extends TableEntity> Object getForeignColumnValueRecursive(TableEntity localEntity, TypedField<? extends TableEntity, ?> field, List<Field> visitedFields) {
+        Objects.requireNonNull(localEntity, "localEntity");
         Objects.requireNonNull(field, "field");
         Objects.requireNonNull(visitedFields, "visitedFields");
 
         Field reflectiveField = field.reflect();
         if (visitedFields.contains(reflectiveField)) {
             throw new IllegalStateException(
-                    "Detected recursive foreign-key cycle while resolving field '" + reflectiveField.getName() + "' on " + entity.getClass().getName()
+                    "Detected recursive foreign-key cycle while resolving field '" + reflectiveField.getName() + "' on " + localEntity.getClass().getName()
             );
         }
 
         visitedFields.add(reflectiveField);
 
-        Object value = getTypedFieldValue(entity, field);
+        Object value = getTypedFieldValue(localEntity, field);
         if (value == null) {
             visitedFields.remove(reflectiveField);
             return null;
         }
 
-        if (!(value instanceof TableEntity foreignEntity)) {
+        if (!(value instanceof TableEntity foreignEntityValue)) {
             visitedFields.remove(reflectiveField);
             return value;
         }
 
-        ForeignKey foreignKey = reflectiveField.getAnnotation(ForeignKey.class);
+        @SuppressWarnings("unchecked")
+        FC foreignEntity = (FC) foreignEntityValue;
 
-        if (foreignKey != null && !foreignKey.overwriteJoinColumnWithUniqueColumnName().isEmpty()) {
-            String foreignColumnName = foreignKey.overwriteJoinColumnWithUniqueColumnName();
+        @SuppressWarnings("unchecked")
+        Class<LC> localClass = (Class<LC>) localEntity.getClass();
+        @SuppressWarnings("unchecked")
+        Class<FC> foreignClass = (Class<FC>) foreignEntity.getClass();
 
-            for (TypedField<?, ?> foreignField : getAllColumnFields(foreignEntity.getClass())) {
-                if (!getColumnName(asTableEntityTypedField(foreignField)).equals(foreignColumnName)) {
-                    continue;
-                }
+        EntityRelation<LC, FC> relation = resolveEntityRelation(localClass, foreignClass);
 
-                Object nestedValue = getTypedFieldValue(foreignEntity, foreignField);
-
-                if (nestedValue instanceof TableEntity) {
-                    Object resolved = getForeignColumnValueRecursive(foreignEntity, foreignField, visitedFields);
-                    visitedFields.remove(reflectiveField);
-                    return resolved;
-                }
-
-                visitedFields.remove(reflectiveField);
-                return nestedValue;
-            }
-
+        if (relation.kind() == RelationKind.INHERITANCE) {
+            Object inheritedPrimaryKeyValue = TableUtils.getPrimaryKeyValue(foreignEntity);
             visitedFields.remove(reflectiveField);
-            throw new IllegalArgumentException(
-                    "No foreign field with column name '" + foreignColumnName + "' found on " + foreignEntity.getClass().getName()
-            );
+            return inheritedPrimaryKeyValue;
         }
 
-        Object primaryKeyValue = TableUtils.getPrimaryKeyValue(foreignEntity);
+        TypedField<FC, ?> foreignAnchorTypedField = relation.anchorField();
+        Object anchorValue;
+        anchorValue = foreignAnchorTypedField.getValue(foreignEntity);
+        Field foreignAnchorField = foreignAnchorTypedField.reflect();
+
+        if (anchorValue instanceof TableEntity nestedForeignEntity) {
+            TypedField<FC, ?> nestedField = TypedField.of(
+                    foreignClass,
+                    foreignAnchorField,
+                    foreignAnchorField.getType()
+            );
+            Object resolved = getForeignColumnValueRecursive(nestedForeignEntity, nestedField, visitedFields);
+            visitedFields.remove(reflectiveField);
+            return resolved;
+        }
+
         visitedFields.remove(reflectiveField);
-        return primaryKeyValue;
+        return anchorValue;
     }
 
     @SuppressWarnings("unchecked")
@@ -119,41 +114,153 @@ final class ColumnResolver {
         return (TypedField<? extends TableEntity, ?>) field;
     }
 
-    public static <LC extends TableEntity, FC extends TableEntity> TypedField<LC, FC> getLocalFieldOfTypeForeignEntity(Class<LC> entityToBeQueried, Class<FC> foreignClass) {
-        for (Field field : entityToBeQueried.getDeclaredFields()) {
+    // Resolve how one entity type relates to another. The relation may be an explicit
+    // @ForeignKey field or a shared-primary-key inheritance link declared through
+    // @TableInherits. Keeping that information in EntityRelation avoids scattering
+    // relation-kind checks throughout the rest of the resolver logic.
+    public static <LC extends TableEntity, FC extends TableEntity> EntityRelation<LC, FC> resolveEntityRelation(
+            Class<LC> localClass,
+            Class<FC> foreignClass
+    ) {
+        Objects.requireNonNull(localClass, "localClass");
+        Objects.requireNonNull(foreignClass, "foreignClass");
+
+        for (Field field : localClass.getDeclaredFields()) {
             if (!field.isAnnotationPresent(ForeignKey.class)) {
                 continue;
             }
 
-            if (!field.getType().equals(foreignClass)) {
+            if (!field.getType().isAssignableFrom(foreignClass) && !foreignClass.isAssignableFrom(field.getType())) {
                 continue;
             }
 
-            field.setAccessible(true);
-            return TypedField.of(entityToBeQueried, field, foreignClass);
+            TypedField<LC, FC> localField = TypedField.of(localClass, field, foreignClass);
+
+            TypedField<FC, Object> foreignAnchorField = getForeignValueMatchingTypedField(localField);
+
+            return new EntityRelation<>(
+                    localClass,
+                    foreignClass,
+                    RelationKind.FOREIGN_KEY,
+                    TableUtils.getTableName(localClass),
+                    TableUtils.getColumnName(localField),
+                    TableUtils.getTableName(foreignClass),
+                    TableUtils.getColumnName(foreignAnchorField),
+                    localField,
+                    foreignAnchorField
+            );
+        }
+
+        if (isInheritedRelation(localClass, foreignClass)) {
+            TypedField<FC, Object> foreignAnchorField = TypedField.of(foreignClass, getPrimaryKeyField(foreignClass), Object.class);
+
+            return new EntityRelation<>(
+                    localClass,
+                    foreignClass,
+                    RelationKind.INHERITANCE,
+                    TableUtils.getTableName(localClass),
+                    TableUtils.getPrimaryKeyColumnName(localClass),
+                    TableUtils.getTableName(foreignClass),
+                    TableUtils.getPrimaryKeyColumnName(foreignClass),
+                    null,
+                    foreignAnchorField
+            );
         }
 
         throw new IllegalArgumentException(
-                "No field annotated with @ForeignKey of type " + foreignClass.getName() + " found on " + entityToBeQueried.getName()
+                "No relation from " + localClass.getName() + " to " + foreignClass.getName()
         );
     }
 
+    private static <LC extends TableEntity, FC extends TableEntity> TypedField<FC, Object> getForeignValueMatchingTypedField(TypedField<LC, FC> localField) {
+        Class<FC> foreignClass = localField.valueType();
+        Field localAnchorField = localField.reflect();
+
+        ForeignKey foreignKey = localAnchorField.getAnnotation(ForeignKey.class);
+
+        // Use the overwrite value if defined
+        if (foreignKey != null && !foreignKey.overwriteJoinColumnWithUniqueColumnName().isEmpty()) {
+            String foreignColumnName = foreignKey.overwriteJoinColumnWithUniqueColumnName();
+            return TypedField.of(foreignClass, foreignColumnName, Object.class);
+        }
+
+        // Default to the primary key
+        Field foreignPrimaryKeyField = getPrimaryKeyField(foreignClass);
+        return TypedField.of(foreignClass, foreignPrimaryKeyField, Object.class);
+    }
+
+    private static Field getPrimaryKeyField(Class<? extends TableEntity> entityClass) {
+        Object primaryKeyMember = TableUtils.getPrimaryKeyMember(entityClass);
+        if (primaryKeyMember instanceof Field primaryKeyField) {
+            primaryKeyField.setAccessible(true);
+            return primaryKeyField;
+        }
+
+        throw new IllegalStateException(
+                "Primary key member of " + entityClass.getName() + " is not a Field"
+        );
+    }
+
+    // Shared-PK inheritance is treated as a first-class entity relation. The concrete
+    // relation object is produced by resolveEntityRelation(...); this helper only checks
+    // whether such an inheritance link exists in the @TableInherits chain.
+    private static boolean isInheritedRelation(
+            Class<? extends TableEntity> entityClass,
+            Class<? extends TableEntity> foreignClass
+    ) {
+        Class<? extends TableEntity> currentClass = entityClass;
+
+        while (currentClass.isAnnotationPresent(TableInherits.class)) {
+            Class<? extends TableEntity> parentClass = resolveParentClass(currentClass.getAnnotation(TableInherits.class));
+            if (parentClass.equals(foreignClass) || parentClass.isAssignableFrom(foreignClass) || foreignClass.isAssignableFrom(parentClass)) {
+                return true;
+            }
+            currentClass = parentClass;
+        }
+
+        return false;
+    }
+
+
+    // For foreign-key resolution we sometimes need to inspect the columns declared on
+    // @TableInherits parent entities as well, because the join-column overwrite may
+    // target a base-table column rather than a column declared directly on the child.
     public static <T extends TableEntity> List<TypedField<T, ?>> getAllColumnFields(Class<T> entityClass) {
         List<TypedField<T, ?>> result = new ArrayList<>();
+        addDeclaredColumnFields(entityClass, entityClass, result);
+        return result;
+    }
 
-        for (Field field : entityClass.getDeclaredFields()) {
+    public static <T extends TableEntity> List<TypedField<T, ?>> getAllColumnFieldsIncludingInheritedBases(Class<T> entityClass) {
+        List<TypedField<T, ?>> result = new ArrayList<>();
+        addDeclaredColumnFields(entityClass, entityClass, result);
+
+        Class<? extends TableEntity> currentClass = entityClass;
+        while (currentClass.isAnnotationPresent(TableInherits.class)) {
+            Class<? extends TableEntity> parentClass = resolveParentClass(currentClass.getAnnotation(TableInherits.class));
+            addDeclaredColumnFields(entityClass, parentClass, result);
+            currentClass = parentClass;
+        }
+
+        return result;
+    }
+
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    private static <T extends TableEntity> void addDeclaredColumnFields(
+            Class<T> ownerClass,
+            Class<? extends TableEntity> declaredOnClass,
+            List<TypedField<T, ?>> result
+    ) {
+        for (Field field : declaredOnClass.getDeclaredFields()) {
             if (!field.isAnnotationPresent(TableColumn.class)) {
                 continue;
             }
 
             field.setAccessible(true);
-
             Class<?> valueType = field.getType();
 
-            result.add(TypedField.of(entityClass, field, valueType));
+            result.add((TypedField<T, ?>) TypedField.of((Class) ownerClass, field, valueType));
         }
-
-        return result;
     }
 
     // --- Inherited primary key resolution ---
@@ -214,6 +321,10 @@ final class ColumnResolver {
             }
         }
 
+        if (parentClass.isAssignableFrom(entity.getClass())) {
+            return entity;
+        }
+
         throw new IllegalArgumentException(
                 "Could not find a parent entity field of type " + parentClass.getName() + " on " + clazz.getName()
         );
@@ -235,5 +346,4 @@ final class ColumnResolver {
                 "@TableInherits must expose a value() that resolves to a TableEntity parent class"
         );
     }
-
 }

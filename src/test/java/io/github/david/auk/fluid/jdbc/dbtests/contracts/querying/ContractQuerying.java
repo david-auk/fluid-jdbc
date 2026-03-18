@@ -1,4 +1,4 @@
-package io.github.david.auk.fluid.jdbc.dbtests.contracts.querying.core;
+package io.github.david.auk.fluid.jdbc.dbtests.contracts.querying;
 
 import io.github.david.auk.fluid.jdbc.components.daos.Dao;
 import io.github.david.auk.fluid.jdbc.components.daos.QueryBuilder;
@@ -7,6 +7,8 @@ import io.github.david.auk.fluid.jdbc.components.daos.querying.operator.NoValueO
 import io.github.david.auk.fluid.jdbc.components.daos.querying.operator.RangeOperator;
 import io.github.david.auk.fluid.jdbc.components.daos.querying.operator.SingleValueOperator;
 import io.github.david.auk.fluid.jdbc.dbtests.contracts.ContractInterface;
+import io.github.david.auk.fluid.jdbc.dbtests.contracts.querying.foreign.ContractQueryingForeign;
+import io.github.david.auk.fluid.jdbc.dbtests.contracts.querying.inheriance.ContractQueryInheritance;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
@@ -22,13 +24,13 @@ import static org.junit.jupiter.api.Assertions.*;
  * <p>This contract intentionally only provides:</p>
  * <ul>
  *   <li>a deterministic-ish dataset generator (covers LIKE/range/boolean/equality use-cases)</li>
- *   <li>simple helpers to populate/clear and to assert the table starts empty</li>
+ *   <li>simple helpers to populateInheritance/clear and to assert the table starts empty</li>
  * </ul>
  *
  * <p>Concrete query-behavior tests (e.g. WHERE, LIKE, ORDER BY, LIMIT) can be added in additional
  * contracts once your query API is implemented.</p>
  */
-public interface ContractQuerying extends ContractInterface {
+public interface ContractQuerying extends ContractQueryingForeign, ContractQueryInheritance, ContractInterface {
 
     /**
      * Creates a fresh entity with a random primary key.
@@ -129,7 +131,7 @@ public interface ContractQuerying extends ContractInterface {
     }
 
     /**
-     * Minimal sanity check: populate inserts exactly the expected number of rows.
+     * Minimal sanity check: populateInheritance inserts exactly the expected number of rows.
      */
     @Test
     default void querying_populate_insertsDataset() {
@@ -137,7 +139,7 @@ public interface ContractQuerying extends ContractInterface {
             List<EntityQuerying> rows = dataset();
             populate(dao, rows);
 
-            assertEquals(rows.size(), dao.getAll().size(), "populate should insert all dataset rows");
+            assertEquals(rows.size(), dao.getAll().size(), "populateInheritance should insert all dataset rows");
         }
     }
 

@@ -1,5 +1,6 @@
 package io.github.david.auk.fluid.jdbc.components.daos.querying.filters;
 
+import io.github.david.auk.fluid.jdbc.components.daos.querying.relations.EntityRelation;
 import io.github.david.auk.fluid.jdbc.components.tables.TableEntity;
 import io.github.david.auk.fluid.jdbc.components.tables.utils.TableUtils;
 import io.github.david.auk.fluid.jdbc.internal.tables.meta.TypedField;
@@ -10,18 +11,18 @@ public final class FilterFieldFactory {
 
     private FilterFieldFactory() {}
 
-    private static <LC extends TableEntity, FC extends TableEntity> ForeignFilterTypedField<LC, FC> buildForeignTypedField(
-            Class<LC> entityToBeQueried,
-            TypedField<FC, Object> foreignTypedFieldToBeQueried
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    private static FilterTypedField<? extends TableEntity, ?> buildForeignFilterTypedField(
+            Class<? extends TableEntity> entityToBeQueried,
+            TypedField<? extends TableEntity, Object> foreignTypedFieldToBeQueried
     ) {
-        // Define the foreign class
-        Class<FC> foreignClass = foreignTypedFieldToBeQueried.owner();
+        Class<? extends TableEntity> foreignClass = foreignTypedFieldToBeQueried.owner();
+        EntityRelation<?, ?> entityRelation = TableUtils.resolveEntityRelation(
+                (Class) entityToBeQueried,
+                (Class) foreignClass
+        );
 
-        // Get the field of the local class referencing the foreign class
-        TypedField<LC, FC> localTypedFieldOfForeignEntity = TableUtils.getLocalFieldOfTypeForeignEntity(entityToBeQueried, foreignClass);
-
-        // Return the new ForeignFilterTypedField
-        return new ForeignFilterTypedField<>(localTypedFieldOfForeignEntity, foreignTypedFieldToBeQueried);
+        return new ForeignFilterTypedField(entityRelation, foreignTypedFieldToBeQueried);
     }
 
     static FilterTypedField<? extends TableEntity, ?> buildFilterTypedField(Class<? extends TableEntity> entityToBeQueried, TypedField<? extends TableEntity, Object> typedFieldToBeFiltered) {
@@ -34,7 +35,7 @@ public final class FilterFieldFactory {
         }
 
         // Is foreign field
-        return buildForeignTypedField(entityToBeQueried, typedFieldToBeFiltered);
+        return buildForeignFilterTypedField(entityToBeQueried, typedFieldToBeFiltered);
     }
 
     public static FilterTypedField<? extends TableEntity, ?> buildFilterTypedField(Class<? extends TableEntity> entityToBeQueried, Field fieldToBeFiltered) {

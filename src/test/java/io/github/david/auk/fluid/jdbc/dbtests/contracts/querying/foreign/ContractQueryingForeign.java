@@ -112,6 +112,34 @@ public interface ContractQueryingForeign extends ContractInterface {
     }
 
     @Test
+    default void queryingForeign_where_multipleForeignFields_combinesFilters() throws NoSuchFieldException {
+        try (
+                Dao<EntityQueryForeign, String> foreignDao = dao(EntityQueryForeign.class, String.class);
+                Dao<EntityQueryLocal, String> localDao = dao(EntityQueryLocal.class, String.class)
+        ) {
+            EntityQueryForeign nl = newForeign("netherlands");
+            EntityQueryForeign no = newForeign("norway");
+            EntityQueryForeign nlDuplicateName = newForeign("netherlands");
+
+            List<EntityQueryLocal> locals = List.of(
+                    newLocal("a", nl, 1),
+                    newLocal("b", no, 2),
+                    newLocal("c", nlDuplicateName, 3)
+            );
+
+            populate(foreignDao, localDao, List.of(nl, no, nlDuplicateName), locals);
+
+            List<EntityQueryLocal> results = new QueryBuilder<>(localDao)
+                    .where(EntityQueryForeign.class.getDeclaredField("name"), SingleValueOperator.EQUALS, "netherlands")
+                    .and(EntityQueryForeign.class.getDeclaredField("id"), SingleValueOperator.EQUALS, nl.id())
+                    .get();
+
+            assertEquals(1, results.size(), "query using two foreign fields should match one local row");
+            assertEquals("a", results.getFirst().name(), "matched local row should be a");
+        }
+    }
+
+    @Test
     default void queryingForeign_where_foreign_like_filtersLocalRows() throws NoSuchFieldException {
         try (
                 Dao<EntityQueryForeign, String> foreignDao = dao(EntityQueryForeign.class, String.class);

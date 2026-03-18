@@ -20,20 +20,18 @@ public final class FieldMapResolver {
 
         Map<Field, String> fieldToColumnNames = new LinkedHashMap<>();
 
-        Class<?> current = tableEntityClass;
-        while (current != null && current != Object.class) {
-            for (Field field : current.getDeclaredFields()) {
-                if (!field.isAnnotationPresent(TableColumn.class)) {
-                    continue;
-                }
-
-                field.setAccessible(true);
-                fieldToColumnNames.putIfAbsent(field, TableUtils.getColumnName(field));
+        for (Field field : tableEntityClass.getDeclaredFields()) {
+            if (!field.isAnnotationPresent(TableColumn.class)) {
+                continue;
             }
 
-            current = current.getSuperclass();
+            field.setAccessible(true);
+            fieldToColumnNames.putIfAbsent(field, TableUtils.getColumnName(field));
         }
 
+        // Only map columns declared on the current entity class.
+        // For @TableInherits chains, the child table should only contribute its own columns
+        // plus the shared parent primary key column used for the join/shared identifier.
         addInheritedParentPrimaryKeyColumn(tableEntityClass, fieldToColumnNames);
 
         Map<TypedField<? extends TableEntity, ?>, String> typedFieldToColumnNames = new LinkedHashMap<>();

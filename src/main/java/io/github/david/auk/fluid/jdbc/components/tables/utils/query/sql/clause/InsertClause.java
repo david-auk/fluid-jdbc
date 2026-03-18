@@ -4,6 +4,7 @@ import io.github.david.auk.fluid.jdbc.components.tables.TableEntity;
 import io.github.david.auk.fluid.jdbc.components.tables.utils.TableUtils;
 import io.github.david.auk.fluid.jdbc.internal.tables.meta.TypedField;
 
+import java.lang.reflect.Field;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.util.Map;
@@ -38,7 +39,7 @@ public final class InsertClause {
     public static <TE extends TableEntity> void prepareInsertStatement(
             PreparedStatement insertStatement,
             TE entity
-    ) throws SQLException, IllegalAccessException {
+    ) throws SQLException {
         if (insertStatement == null) {
             throw new IllegalArgumentException("PreparedStatement cannot be null");
         }
@@ -61,24 +62,31 @@ public final class InsertClause {
 
         for (Map.Entry<TypedField<? extends TableEntity, ?>, String> entry : fieldToColumnNames.entrySet()) {
             TypedField<? extends TableEntity, ?> typedField = entry.getKey();
-            Object sqlValue = resolveSqlValueUnchecked(entity, typedField);
+            Object sqlValue = resolveSqlValue(entity, typedField.reflect());
 
             insertStatement.setObject(parameterIndex++, sqlValue);
         }
     }
 
-    private static <LC extends TableEntity, FC extends TableEntity> Object resolveSqlValue(LC entity, TypedField<LC, ?> typedField) throws IllegalAccessException {
+    private static <LC extends TableEntity, FC extends TableEntity> Object resolveSqlValue(LC entity, Field field) {
+        Object value;
+        try {
+            value = field.get(entity);
+        } catch (IllegalAccessException e) {
+            throw new RuntimeException(e);
+        }
 
-        Class<LC> localClass = typedField.owner();
-        Object value = typedField.get(entity);
+        // If the field has another Table entity as DataType
+        if (value instanceof TableEntity) {
 
-        if (value instanceof TableEntity foreignEntity) {
             @SuppressWarnings("unchecked")
-            Class<FC> foreignClass = (Class<FC>) foreignEntity.getClass();
+            Class<LC> localClass = (Class<LC>) entity.getClass();
 
-            TypedField<LC, FC> foreignColumn = TableUtils.getLocalFieldOfTypeForeignEntity(localClass, foreignClass);
+            @SuppressWarnings("unchecked")
+            Class<FC> foreignClass = (Class<FC>) field.getType().asSubclass(TableEntity.class);
 
-            Object foreignValue = TableUtils.getForeignColumnValue(entity, foreignColumn);
+            TypedField<LC, FC> localField = TypedField.of(localClass, field, foreignClass);
+            Object foreignValue = TableUtils.getForeignColumnValue(entity, localField);
 
             if (foreignValue instanceof TableEntity) {
                 throw new IllegalArgumentException("Foreign value can not be of type TableEntity");
@@ -86,15 +94,6 @@ public final class InsertClause {
 
             return foreignValue;
         }
-
         return value;
-    }
-
-    @SuppressWarnings("unchecked")
-    private static <TE extends TableEntity> Object resolveSqlValueUnchecked(
-            TE entity,
-            TypedField<? extends TableEntity, ?> typedField
-    ) throws IllegalAccessException {
-        return resolveSqlValue(entity, (TypedField<TE, ?>) typedField);
     }
 }

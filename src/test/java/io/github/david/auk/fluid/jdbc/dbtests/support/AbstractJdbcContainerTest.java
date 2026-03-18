@@ -5,7 +5,7 @@ import io.github.david.auk.fluid.jdbc.dbtests.contracts.crud.ContractCrud;
 import io.github.david.auk.fluid.jdbc.dbtests.contracts.foreignkey.ContractForeignKey;
 import io.github.david.auk.fluid.jdbc.dbtests.contracts.inheritance.ContractInheritance;
 import io.github.david.auk.fluid.jdbc.dbtests.contracts.querying.foreign.ContractQueryingForeign;
-import io.github.david.auk.fluid.jdbc.dbtests.contracts.querying.core.ContractQuerying;
+import io.github.david.auk.fluid.jdbc.dbtests.contracts.querying.ContractQuerying;
 import org.junit.jupiter.api.*;
 import org.testcontainers.containers.JdbcDatabaseContainer;
 import org.testcontainers.junit.jupiter.Testcontainers;
@@ -23,8 +23,7 @@ public abstract class AbstractJdbcContainerTest implements
         ContractInheritance,
 
         // Querying tests
-        ContractQuerying,
-        ContractQueryingForeign {
+        ContractQuerying {
 
     private JdbcDatabaseContainer<?> container;
 
@@ -139,11 +138,17 @@ public abstract class AbstractJdbcContainerTest implements
                 // Child `inherits` base by sharing the same PK and referencing base(id)
                 """
                 CREATE TABLE inherit_base (
-                    id VARCHAR(255) PRIMARY KEY
+                    id VARCHAR(255) PRIMARY KEY,
+                    active BOOLEAN NOT NULL,
+                    amount INT NOT NULL,
+                    name VARCHAR(255) NOT NULL
                 )""", """
                 CREATE TABLE inherit_child (
                     id VARCHAR(255) PRIMARY KEY,
                     value_int INT NOT NULL,
+                    enabled BOOLEAN NOT NULL,
+                    score INT NOT NULL,
+                    description VARCHAR(255) NOT NULL,
                     CONSTRAINT fk_inherit_child_base
                         FOREIGN KEY (id)
                         REFERENCES inherit_base(id)
