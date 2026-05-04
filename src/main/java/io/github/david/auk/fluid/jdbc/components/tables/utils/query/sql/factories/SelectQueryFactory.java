@@ -2,13 +2,17 @@ package io.github.david.auk.fluid.jdbc.components.tables.utils.query.sql.factori
 
 import io.github.david.auk.fluid.jdbc.components.daos.querying.filters.FilterCriterion;
 import io.github.david.auk.fluid.jdbc.components.daos.querying.operator.ValueOperator;
+import io.github.david.auk.fluid.jdbc.components.tables.utils.EnumFormatter;
+import io.github.david.auk.fluid.jdbc.components.tables.utils.query.sql.ObjectSetter;
 import io.github.david.auk.fluid.jdbc.components.tables.utils.query.sql.clause.*;
 
 import java.lang.reflect.Field;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
+import java.sql.Types;
 import java.util.Collection;
 import java.util.List;
+import java.util.Objects;
 
 /**
  * Builds SELECT SQL and prepares a PreparedStatement with bound parameters.
@@ -60,10 +64,12 @@ public final class SelectQueryFactory {
 
                     if (value instanceof Collection<?> collection) {
                         for (Object item : collection) {
-                            preparedStatement.setObject(parameterIndex++, item);
+                            ObjectSetter.setObject(preparedStatement, parameterIndex++, item);
+                            //preparedStatement.setObject(parameterIndex++, item);
                         }
                     } else {
-                        preparedStatement.setObject(parameterIndex++, value);
+                        ObjectSetter.setObject(preparedStatement, parameterIndex++, value);
+//                        preparedStatement.setObject(parameterIndex++, value);
                     }
                 }
             }
@@ -71,5 +77,4 @@ public final class SelectQueryFactory {
             throw new RuntimeException(e);
         }
     }
-
 }

@@ -2,6 +2,7 @@ package io.github.david.auk.fluid.jdbc.components.tables.utils.query.sql.clause;
 
 import io.github.david.auk.fluid.jdbc.components.tables.TableEntity;
 import io.github.david.auk.fluid.jdbc.components.tables.utils.TableUtils;
+import io.github.david.auk.fluid.jdbc.components.tables.utils.query.sql.ObjectSetter;
 import io.github.david.auk.fluid.jdbc.internal.tables.meta.TypedField;
 
 import java.lang.reflect.Field;
@@ -64,7 +65,8 @@ public final class InsertClause {
             TypedField<? extends TableEntity, ?> typedField = entry.getKey();
             Object sqlValue = resolveSqlValue(entity, typedField.reflect());
 
-            insertStatement.setObject(parameterIndex++, sqlValue);
+            ObjectSetter.setObject(insertStatement, parameterIndex++, sqlValue);
+//            insertStatement.setObject(parameterIndex++, sqlValue);
         }
     }
 

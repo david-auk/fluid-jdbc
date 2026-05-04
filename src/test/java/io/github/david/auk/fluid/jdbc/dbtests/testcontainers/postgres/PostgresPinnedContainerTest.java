@@ -1,12 +1,12 @@
 package io.github.david.auk.fluid.jdbc.dbtests.testcontainers.postgres;
 
-import io.github.david.auk.fluid.jdbc.dbtests.support.AbstractJdbcContainerTest;
+import io.github.david.auk.fluid.jdbc.dbtests.support.AbstractPostgresJdbcContainerTest;
 import io.github.david.auk.fluid.jdbc.dbtests.support.ContainerSpec;
 import org.testcontainers.containers.PostgreSQLContainer;
 
 import static io.github.david.auk.fluid.jdbc.dbtests.support.FetchResource.loadTrimmedResource;
 
-class PostgresPinnedContainerTest extends AbstractJdbcContainerTest {
+class PostgresPinnedContainerTest extends AbstractPostgresJdbcContainerTest {
 
     @Override
     protected ContainerSpec spec() {
