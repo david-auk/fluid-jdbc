@@ -17,6 +17,10 @@ public final class SupportedByDatabase {
 
         register(DatabaseType.MYSQL, Instant.class, Timestamp.class);
         register(DatabaseType.MYSQL, LocalDateTime.class, Timestamp.class);
+
+        // JSONB support (PostgreSQL)
+        register(DatabaseType.POSTGRESQL, com.fasterxml.jackson.databind.JsonNode.class, String.class);
+        register(DatabaseType.POSTGRESQL, java.util.Map.class, String.class);
     }
 
     private SupportedByDatabase() {

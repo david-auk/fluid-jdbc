@@ -1,11 +1,11 @@
-package io.github.david.auk.fluid.jdbc.dbtests.contracts.querying;
+package io.github.david.auk.fluid.jdbc.dbtests.contracts.generic.querying;
 
 import io.github.david.auk.fluid.jdbc.components.daos.Dao;
 import io.github.david.auk.fluid.jdbc.components.daos.QueryBuilder;
 import io.github.david.auk.fluid.jdbc.components.daos.querying.operator.SingleValueOperator;
 import io.github.david.auk.fluid.jdbc.dbtests.contracts.ContractInterface;
-import io.github.david.auk.fluid.jdbc.dbtests.contracts.inheritance.EntityInheritBase;
-import io.github.david.auk.fluid.jdbc.dbtests.contracts.inheritance.EntityInheritChild;
+import io.github.david.auk.fluid.jdbc.dbtests.contracts.generic.inheritance.EntityInheritBase;
+import io.github.david.auk.fluid.jdbc.dbtests.contracts.generic.inheritance.EntityInheritChild;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;

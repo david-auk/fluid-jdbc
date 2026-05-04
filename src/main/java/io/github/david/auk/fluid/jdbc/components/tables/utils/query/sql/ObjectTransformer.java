@@ -1,5 +1,10 @@
 package io.github.david.auk.fluid.jdbc.components.tables.utils.query.sql;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.Map;
@@ -9,12 +14,16 @@ import java.util.function.Function;
 
 public final class ObjectTransformer {
 
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private static final Map<TransformationKey<?, ?>, Function<?, ?>> TRANSFORMERS = new ConcurrentHashMap<>();
 
     static {
         register(Instant.class, Timestamp.class, Timestamp::from);
         register(Timestamp.class, Instant.class, Timestamp::toInstant);
-        register(Object.class, String.class, Object::toString);
+        register(Map.class, String.class, ObjectTransformer::writeJson);
+        register(JsonNode.class, String.class, ObjectTransformer::writeJson);
+        register(String.class, Map.class, ObjectTransformer::readJsonMap);
+        register(String.class, JsonNode.class, ObjectTransformer::readJsonNode);
     }
 
     private ObjectTransformer() {
@@ -112,6 +121,30 @@ public final class ObjectTransformer {
         }
 
         return null;
+    }
+
+    private static String writeJson(Object value) {
+        try {
+            return OBJECT_MAPPER.writeValueAsString(value);
+        } catch (JsonProcessingException e) {
+            throw new IllegalArgumentException("Failed to serialize value to JSON", e);
+        }
+    }
+
+    private static Map<String, Object> readJsonMap(String value) {
+        try {
+            return OBJECT_MAPPER.readValue(value, new TypeReference<>() {});
+        } catch (JsonProcessingException e) {
+            throw new IllegalArgumentException("Failed to deserialize JSON value to Map<String, Object>", e);
+        }
+    }
+
+    private static JsonNode readJsonNode(String value) {
+        try {
+            return OBJECT_MAPPER.readTree(value);
+        } catch (JsonProcessingException e) {
+            throw new IllegalArgumentException("Failed to deserialize JSON value to JsonNode", e);
+        }
     }
 
     private record TransformationKey<FROM, TO>(

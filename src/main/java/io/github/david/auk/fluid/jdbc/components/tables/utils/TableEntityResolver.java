@@ -2,6 +2,7 @@ package io.github.david.auk.fluid.jdbc.components.tables.utils;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.JsonNode;
 import io.github.david.auk.fluid.jdbc.annotations.table.constructor.TableConstructor;
 import io.github.david.auk.fluid.jdbc.annotations.table.field.ForeignKey;
 import io.github.david.auk.fluid.jdbc.annotations.table.field.TableColumn;
@@ -180,6 +181,13 @@ public final class TableEntityResolver<TE extends TableEntity, PK> {
             return foreignKeyValue == null
                     ? null
                     : loadReference(connection, referencedClass, foreignKeyValue);
+        }
+
+        if (JsonNode.class.isAssignableFrom(fieldType)) {
+            String json = rs.getString(columnName);
+            return json == null
+                    ? objectMapper.nullNode()
+                    : objectMapper.readTree(json);
         }
 
         if (Map.class.isAssignableFrom(fieldType)) {

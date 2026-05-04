@@ -1,4 +1,4 @@
-package io.github.david.auk.fluid.jdbc.dbtests.contracts.foreignkey;
+package io.github.david.auk.fluid.jdbc.dbtests.contracts.generic.foreignkey;
 
 import io.github.david.auk.fluid.jdbc.annotations.table.TableName;
 import io.github.david.auk.fluid.jdbc.annotations.table.constructor.TableConstructor;

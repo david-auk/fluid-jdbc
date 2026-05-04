@@ -1,11 +1,11 @@
 package io.github.david.auk.fluid.jdbc.dbtests.support;
 
 import io.github.david.auk.fluid.jdbc.components.Database;
-import io.github.david.auk.fluid.jdbc.dbtests.contracts.crud.ContractCrud;
-import io.github.david.auk.fluid.jdbc.dbtests.contracts.foreignkey.ContractForeignKey;
-import io.github.david.auk.fluid.jdbc.dbtests.contracts.inheritance.ContractInheritance;
-import io.github.david.auk.fluid.jdbc.dbtests.contracts.querying.ContractQuerying;
-import io.github.david.auk.fluid.jdbc.dbtests.contracts.querying.enums.ContractEnumQuerying;
+import io.github.david.auk.fluid.jdbc.dbtests.contracts.generic.crud.ContractCrud;
+import io.github.david.auk.fluid.jdbc.dbtests.contracts.generic.foreignkey.ContractForeignKey;
+import io.github.david.auk.fluid.jdbc.dbtests.contracts.generic.inheritance.ContractInheritance;
+import io.github.david.auk.fluid.jdbc.dbtests.contracts.generic.querying.ContractQuerying;
+import io.github.david.auk.fluid.jdbc.dbtests.contracts.generic.querying.enums.ContractEnumQuerying;
 import org.junit.jupiter.api.*;
 import org.testcontainers.containers.JdbcDatabaseContainer;
 import org.testcontainers.junit.jupiter.Testcontainers;
