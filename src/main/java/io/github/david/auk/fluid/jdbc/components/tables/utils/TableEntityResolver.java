@@ -1,4 +1,3 @@
-
 package io.github.david.auk.fluid.jdbc.components.tables.utils;
 
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -8,6 +7,7 @@ import io.github.david.auk.fluid.jdbc.annotations.table.field.ForeignKey;
 import io.github.david.auk.fluid.jdbc.annotations.table.field.TableColumn;
 import io.github.david.auk.fluid.jdbc.components.daos.Dao;
 import io.github.david.auk.fluid.jdbc.components.tables.TableEntity;
+import io.github.david.auk.fluid.jdbc.components.tables.utils.query.sql.ObjectTransformer;
 import io.github.david.auk.fluid.jdbc.factories.DAOFactory;
 
 import java.lang.reflect.Constructor;
@@ -57,8 +57,17 @@ public final class TableEntityResolver<TE extends TableEntity, PK> {
                 argumentOffset = 1;
             }
 
-            for (int fieldIndex = 0; fieldIndex < childFields.length; fieldIndex++) {
-                constructorArguments[argumentOffset + fieldIndex] = readFieldFromResultSet(connection, rs, childFields[fieldIndex]);
+            Field[] constructorFields = resolveConstructorFields(parameters, childFields, argumentOffset);
+
+            for (int fieldIndex = 0; fieldIndex < constructorFields.length; fieldIndex++) {
+                Field field = constructorFields[fieldIndex];
+                Object value = readFieldFromResultSet(connection, rs, field);
+
+                if (value != null && ObjectTransformer.canTransform(value.getClass(), field.getType())) {
+                    value = ObjectTransformer.transform(value, field.getType());
+                }
+
+                constructorArguments[argumentOffset + fieldIndex] = value;
             }
 
             return tableEntityClass.cast(constructor.newInstance(constructorArguments));
@@ -99,11 +108,46 @@ public final class TableEntityResolver<TE extends TableEntity, PK> {
             Field[] childFields,
             boolean hasParentParameter
     ) {
-        if (!hasParentParameter && parameters.length != childFields.length) {
+        int tableColumnParameterCount = hasParentParameter
+                ? parameters.length - 1
+                : parameters.length;
+
+        if (tableColumnParameterCount > childFields.length) {
             throw new RuntimeException(
-                    "Constructor parameter count (" + parameters.length + ") does not match field count (" + childFields.length + ")"
+                    "Constructor table-column parameter count (" + tableColumnParameterCount
+                            + ") is greater than field count (" + childFields.length + ")"
             );
         }
+    }
+
+    private Field[] resolveConstructorFields(
+            Parameter[] parameters,
+            Field[] childFields,
+            int argumentOffset
+    ) {
+        Parameter[] tableColumnParameters = Arrays.copyOfRange(parameters, argumentOffset, parameters.length);
+
+        if (tableColumnParameters.length == childFields.length) {
+            return childFields;
+        }
+
+        Field[] resolvedFields = new Field[tableColumnParameters.length];
+
+        for (int i = 0; i < tableColumnParameters.length; i++) {
+            Parameter parameter = tableColumnParameters[i];
+
+            resolvedFields[i] = Arrays.stream(childFields)
+                    .filter(field -> field.getName().equals(parameter.getName()))
+                    .findFirst()
+                    .orElseThrow(() -> new RuntimeException(
+                            "Could not match constructor parameter '" + parameter.getName()
+                                    + "' to a @TableColumn field on " + tableEntityClass.getName()
+                                    + ". Make sure the constructor parameter name matches the field name, "
+                                    + "or include every @TableColumn field in the @TableConstructor."
+                    ));
+        }
+
+        return resolvedFields;
     }
 
     private TableEntity loadParentEntity(Connection connection, ResultSet rs, Parameter parentParameter) throws Exception {
@@ -153,6 +197,10 @@ public final class TableEntityResolver<TE extends TableEntity, PK> {
 
             // TODO Check if this is the right way to handle enums
             return EnumFormatter.parse(enumType, dbValue);
+        }
+
+        if (ObjectTransformer.canTransform(java.sql.Timestamp.class, fieldType)) {
+            return rs.getTimestamp(columnName);
         }
 
         return rs.getObject(columnName, fieldType);
