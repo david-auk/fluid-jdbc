@@ -1,12 +1,12 @@
-package io.github.david.auk.fluid.jdbc.dbtests.contracts.querying;
+package io.github.david.auk.fluid.jdbc.dbtests.contracts.generic.querying;
 
 import io.github.david.auk.fluid.jdbc.components.daos.Dao;
 import io.github.david.auk.fluid.jdbc.components.daos.QueryBuilder;
 import io.github.david.auk.fluid.jdbc.components.daos.querying.operator.SingleValueOperator;
 import io.github.david.auk.fluid.jdbc.dbtests.contracts.ContractInterface;
-import io.github.david.auk.fluid.jdbc.dbtests.contracts.foreignkey.EntityForeign;
-import io.github.david.auk.fluid.jdbc.dbtests.contracts.foreignkey.EntityForeignSecond;
-import io.github.david.auk.fluid.jdbc.dbtests.contracts.foreignkey.EntityLocal;
+import io.github.david.auk.fluid.jdbc.dbtests.contracts.generic.foreignkey.EntityForeign;
+import io.github.david.auk.fluid.jdbc.dbtests.contracts.generic.foreignkey.EntityForeignSecond;
+import io.github.david.auk.fluid.jdbc.dbtests.contracts.generic.foreignkey.EntityLocal;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;

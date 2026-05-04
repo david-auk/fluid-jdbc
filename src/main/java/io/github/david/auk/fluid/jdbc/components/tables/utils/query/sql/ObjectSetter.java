@@ -7,7 +7,15 @@ import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.sql.Types;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+import java.util.Map;
+
 public class ObjectSetter {
+
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     public static void setObject(
             PreparedStatement preparedStatement,
@@ -36,6 +44,18 @@ public class ObjectSetter {
             return;
         }
 
+        if (value instanceof JsonNode || value instanceof Map<?, ?>) {
+            String json = toJson(value);
+
+            if (databaseType == DatabaseType.POSTGRESQL) {
+                preparedStatement.setObject(parameterIndex, json, Types.OTHER);
+            } else {
+                preparedStatement.setString(parameterIndex, json);
+            }
+
+            return;
+        }
+
         if (value != null) {
             Class<?> supportedType = SupportedByDatabase.getSupportedType(databaseType, value.getClass());
 
@@ -46,6 +66,22 @@ public class ObjectSetter {
         }
 
         preparedStatement.setObject(parameterIndex, value);
+    }
+
+    private static String toJson(Object value) throws SQLException {
+        try {
+            if (value instanceof JsonNode jsonNode) {
+                return OBJECT_MAPPER.writeValueAsString(jsonNode);
+            }
+
+            if (value instanceof Map<?, ?> map) {
+                return OBJECT_MAPPER.writeValueAsString(map);
+            }
+
+            throw new IllegalArgumentException("Unsupported JSON value type: " + value.getClass().getName());
+        } catch (JsonProcessingException exception) {
+            throw new SQLException("Failed to serialize value to JSON", exception);
+        }
     }
 
     private static DatabaseType resolveDatabaseType(PreparedStatement preparedStatement) throws SQLException {

@@ -1,4 +1,4 @@
-package io.github.david.auk.fluid.jdbc.dbtests.contracts.crud;
+package io.github.david.auk.fluid.jdbc.dbtests.contracts.generic.crud;
 
 import io.github.david.auk.fluid.jdbc.components.daos.Dao;
 import io.github.david.auk.fluid.jdbc.dbtests.contracts.ContractInterface;
