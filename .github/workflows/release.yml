@@ -23,8 +23,8 @@ jobs:
 
       # Optional: keep a quick sanity check before publish.
       # You can remove this if you prefer the tests workflow to be the only gate.
-      - name: Build & test (excluding @Tag("latest"))
-        run: ./gradlew clean test -Djunit.jupiter.tags.exclude=latest --no-daemon --stacktrace
+#      - name: Build & test (excluding @Tag("latest"))
+#        run: ./gradlew clean test -Djunit.jupiter.tags.exclude=latest --no-daemon --stacktrace
 
       - name: Configure Gradle credentials
         run: |
