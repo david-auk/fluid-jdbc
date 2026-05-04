@@ -1,6 +1,6 @@
 package io.github.david.auk.fluid.jdbc.dbtests.testcontainers.mysql;
 
-import io.github.david.auk.fluid.jdbc.dbtests.support.AbstractJdbcContainerTest;
+import io.github.david.auk.fluid.jdbc.dbtests.support.AbstractMysqlJdbcContainerTest;
 import io.github.david.auk.fluid.jdbc.dbtests.support.ContainerSpec;
 import org.junit.jupiter.api.Tag;
 import org.testcontainers.containers.MySQLContainer;
@@ -8,7 +8,7 @@ import org.testcontainers.containers.MySQLContainer;
 import static io.github.david.auk.fluid.jdbc.dbtests.support.FetchResource.loadTrimmedResource;
 
 @Tag("latest")
-class MySqlLatestStableContainerTest extends AbstractJdbcContainerTest {
+class MySqlLatestStableContainerTest extends AbstractMysqlJdbcContainerTest {
 
     @Override
     protected ContainerSpec spec() {

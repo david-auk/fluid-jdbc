@@ -145,6 +145,16 @@ public final class TableEntityResolver<TE extends TableEntity, PK> {
                     : objectMapper.readValue(json, new TypeReference<Map<String, Object>>() {});
         }
 
+        if (fieldType.isEnum()) {
+            String dbValue = rs.getString(columnName);
+
+            @SuppressWarnings({"unchecked", "rawtypes"})
+            Class<? extends Enum> enumType = (Class<? extends Enum>) fieldType;
+
+            // TODO Check if this is the right way to handle enums
+            return EnumFormatter.parse(enumType, dbValue);
+        }
+
         return rs.getObject(columnName, fieldType);
     }
 
