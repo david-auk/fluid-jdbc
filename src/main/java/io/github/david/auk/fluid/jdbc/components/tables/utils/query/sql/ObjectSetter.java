@@ -14,6 +14,9 @@ public class ObjectSetter {
             int parameterIndex,
             Object value
     ) throws SQLException {
+
+        DatabaseType databaseType = resolveDatabaseType(preparedStatement);
+
         if (value instanceof Enum<?> enumValue) {
 
             EnumFormat enumFormat = enumValue.getDeclaringClass().getAnnotation(EnumFormat.class);
@@ -24,7 +27,7 @@ public class ObjectSetter {
                 dbValue = EnumFormatter.format(enumValue);
             }
 
-            if (isPostgres(preparedStatement)) {
+            if (databaseType == DatabaseType.POSTGRESQL) {
                 preparedStatement.setObject(parameterIndex, dbValue, Types.OTHER);
             } else {
                 preparedStatement.setObject(parameterIndex, dbValue);
@@ -33,16 +36,38 @@ public class ObjectSetter {
             return;
         }
 
+        if (value != null) {
+            Class<?> supportedType = SupportedByDatabase.getSupportedType(databaseType, value.getClass());
+
+            if (!supportedType.equals(value.getClass())
+                    && ObjectTransformer.canTransform(value.getClass(), supportedType)) {
+                value = ObjectTransformer.transform(value, supportedType);
+            }
+        }
+
         preparedStatement.setObject(parameterIndex, value);
     }
 
-    private static boolean isPostgres(PreparedStatement preparedStatement) throws SQLException {
+    private static DatabaseType resolveDatabaseType(PreparedStatement preparedStatement) throws SQLException {
         String databaseProductName = preparedStatement
                 .getConnection()
                 .getMetaData()
                 .getDatabaseProductName();
 
-        return databaseProductName != null
-                && databaseProductName.toLowerCase().contains("postgresql");
+        if (databaseProductName == null) {
+            throw new IllegalStateException("Unknown database type");
+        }
+
+        String normalized = databaseProductName.toLowerCase();
+
+        if (normalized.contains("postgresql")) {
+            return DatabaseType.POSTGRESQL;
+        }
+
+        if (normalized.contains("mysql")) {
+            return DatabaseType.MYSQL;
+        }
+
+        throw new IllegalStateException("Unsupported database type: " + databaseProductName);
     }
 }

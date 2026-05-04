@@ -4,6 +4,7 @@ import io.github.david.auk.fluid.jdbc.components.daos.Dao;
 import io.github.david.auk.fluid.jdbc.dbtests.contracts.ContractInterface;
 import org.junit.jupiter.api.Test;
 
+import java.time.Instant;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -21,7 +22,7 @@ public interface ContractCrud extends ContractInterface {
     default void crud_add_insertsRecord() {
         String id = UUID.randomUUID().toString();
         try (Dao<EntityCrud, String> dao = dao(EntityCrud.class, String.class)) {
-            dao.add(new EntityCrud(id, "first", 1));
+            dao.add(new EntityCrud(id, "first", 1, Instant.now()));
 
             assertEquals(1, dao.getAll().size(), "insert should add exactly one row");
             assertTrue(dao.existsByPrimaryKey(id), "existsByPrimaryKey should be true after insert");
@@ -38,9 +39,9 @@ public interface ContractCrud extends ContractInterface {
         String id = UUID.randomUUID().toString();
 
         try (Dao<EntityCrud, String> dao = dao(EntityCrud.class, String.class)) {
-            dao.add(new EntityCrud(id, "first", 1));
+            dao.add(new EntityCrud(id, "first", 1, Instant.now()));
             
-            dao.update(new EntityCrud(id, "first", 42));
+            dao.update(new EntityCrud(id, "first", 42, Instant.now()));
 
             EntityCrud after = dao.get(id);
             assertEquals(42, after.valueInt(), "updated value_int should be readable");
@@ -53,10 +54,10 @@ public interface ContractCrud extends ContractInterface {
         String newId = UUID.randomUUID().toString();
 
         try (Dao<EntityCrud, String> dao = dao(EntityCrud.class, String.class)) {
-            EntityCrud oldEntity = new EntityCrud(oldId, "first", 1);
+            EntityCrud oldEntity = new EntityCrud(oldId, "first", 1, Instant.now());
             dao.add(oldEntity);
 
-            EntityCrud newEntity = new EntityCrud(newId, "first", 1);
+            EntityCrud newEntity = new EntityCrud(newId, "first", 1, Instant.now());
             dao.update(oldEntity, newEntity);
 
             assertFalse(dao.existsByPrimaryKey(oldId), "old primary key should no longer exist after update(old,new)");
@@ -76,11 +77,11 @@ public interface ContractCrud extends ContractInterface {
 
         try (Dao<EntityCrud, String> dao = dao(EntityCrud.class, String.class)) {
             // initial row
-            EntityCrud oldEntity = new EntityCrud(oldId, "first", 1);
+            EntityCrud oldEntity = new EntityCrud(oldId, "first", 1, Instant.now());
             dao.add(oldEntity);
 
             // new PK + changed non-PK attributes
-            EntityCrud newEntity = new EntityCrud(newId, "second", 99);
+            EntityCrud newEntity = new EntityCrud(newId, "second", 99, Instant.now());
             dao.update(oldEntity, newEntity);
 
             // sanity: PK changed
@@ -101,8 +102,8 @@ public interface ContractCrud extends ContractInterface {
         String newId = UUID.randomUUID().toString();
 
         try (Dao<EntityCrud, String> dao = dao(EntityCrud.class, String.class)) {
-            EntityCrud oldEntity = new EntityCrud(missingId, "missing", 1);
-            EntityCrud newEntity = new EntityCrud(newId, "missing", 1);
+            EntityCrud oldEntity = new EntityCrud(missingId, "missing", 1, Instant.now());
+            EntityCrud newEntity = new EntityCrud(newId, "missing", 1, Instant.now());
 
             RuntimeException ex = assertThrows(RuntimeException.class, () -> dao.update(oldEntity, newEntity));
             assertTrue(ex.getMessage() != null && ex.getMessage().toLowerCase().contains("does not exist"),
@@ -114,7 +115,7 @@ public interface ContractCrud extends ContractInterface {
     default void crud_delete_removesRecord() {
         String id = UUID.randomUUID().toString();
         try (Dao<EntityCrud, String> dao = dao(EntityCrud.class, String.class)) {
-            dao.add(new EntityCrud(id, "first", 1));
+            dao.add(new EntityCrud(id, "first", 1, Instant.now()));
 
             dao.delete(id);
 

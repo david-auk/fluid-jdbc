@@ -2,6 +2,7 @@ package io.github.david.auk.fluid.jdbc.components.tables.utils.query.sql.clause;
 
 import io.github.david.auk.fluid.jdbc.components.tables.TableEntity;
 import io.github.david.auk.fluid.jdbc.components.tables.utils.TableUtils;
+import io.github.david.auk.fluid.jdbc.components.tables.utils.query.sql.ObjectSetter;
 import io.github.david.auk.fluid.jdbc.internal.tables.meta.TypedField;
 
 import java.lang.reflect.AccessibleObject;
@@ -126,14 +127,14 @@ public final class UpdateClause {
 
                     if (primaryKeyUpdate) {
                         try {
-                            updateStatement.setObject(parameterIndex++, updatedValue);
+                            ObjectSetter.setObject(updateStatement, parameterIndex++, updatedValue);
                         } catch (SQLException e) {
                             throw new RuntimeException(e);
                         }
                     }
                 } else {
                     try {
-                        updateStatement.setObject(parameterIndex++, updatedValue);
+                        ObjectSetter.setObject(updateStatement, parameterIndex++, updatedValue);
                     } catch (SQLException e) {
                         throw new RuntimeException(e);
                     }
