@@ -32,6 +32,7 @@ public interface QueryInterface<T extends TableEntity, K> {
 
     // Order
     QueryBuilder<T, K> orderBy(Field field);
+    QueryBuilder<T, K> limit(Integer limitAmount);
     QueryBuilder<T, K> desc();
     QueryBuilder<T, K> asc();
 

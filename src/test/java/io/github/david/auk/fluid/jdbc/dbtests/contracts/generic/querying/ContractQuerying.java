@@ -219,6 +219,21 @@ public interface ContractQuerying extends ContractQueryingForeign, ContractQuery
     }
 
     @Test
+    default void querying_limit_only_returns_expected_amount() {
+        try (Dao<EntityQuerying, String> dao = dao(EntityQuerying.class, String.class)) {
+            populateQuerying(dao);
+
+            List<EntityQuerying> results = new QueryBuilder<>(dao)
+                    .orderBy(field("valueInt"))
+                    .asc()
+                    .limit(10)
+                    .get();
+
+            assertEquals(10, results.size(), "unified dataset contains 10 rows");
+        }
+    }
+
+    @Test
     default void querying_orderBy_asc_sortsByValueInt() {
         try (Dao<EntityQuerying, String> dao = dao(EntityQuerying.class, String.class)) {
             populateQuerying(dao);
