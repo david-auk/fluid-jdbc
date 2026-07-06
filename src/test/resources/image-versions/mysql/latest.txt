@@ -1,1 +1,1 @@
-mysql:lts
+mysql:8.4

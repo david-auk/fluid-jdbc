@@ -14,7 +14,8 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.Arrays;
 
-import static io.github.david.auk.fluid.jdbc.components.tables.TableUtilsOld.getPrimaryKeyMember;
+import static io.github.david.auk.fluid.jdbc.components.tables.utils.TableUtils.getPrimaryKeyMember;
+
 
 /**
  * Marker interface for classes that can be used with {@link Dao} and {@link ValidatedBody}.

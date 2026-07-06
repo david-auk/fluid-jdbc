@@ -19,6 +19,8 @@ public class QueryBuilder<TE extends TableEntity, PK> implements QueryInterface<
     private final List<FilterCriterion<?, ?>> filters = new ArrayList<>();
     @Nullable
     private Field orderByField;
+    @Nullable
+    private Integer limit;
     private boolean ascending = true;
 
     public QueryBuilder(Dao<TE, PK> dao) {
@@ -124,6 +126,19 @@ public class QueryBuilder<TE extends TableEntity, PK> implements QueryInterface<
         return this;
     }
 
+    /**
+     * Specify LIMIT number
+     */
+    @Override
+    public QueryBuilder<TE, PK> limit(Integer limitAmount) {
+
+        if (limitAmount == null || limitAmount <= 0)
+                throw new IllegalArgumentException("limitAmount must be a number above 0"); 
+
+        this.limit = limitAmount;
+        return this;
+    }
+
     /** Subsequent .get() will sort ascending. */
     @Override
     public QueryBuilder<TE, PK> asc() {
@@ -142,13 +157,25 @@ public class QueryBuilder<TE extends TableEntity, PK> implements QueryInterface<
      * Execute the query and return matched entities.
      */
     @Override
+    public TE getFirst() {
+        limit(1);
+        return getUnique();
+    }
+
+    @Override
+    public TE getLast() {
+        ascending = !ascending;
+        return getFirst();
+    }
+
+    @Override
     public List<TE> get() {
-        return dao.get(filters, orderByField, ascending);
+        return dao.get(filters, orderByField, ascending, limit);
     }
 
     @Override
     public TE getUnique() {
-        List<TE> results = dao.get(filters, orderByField, ascending);
+        List<TE> results = dao.get(filters, orderByField, ascending, limit);
         if (results.size() > 1) {
             throw new IllegalStateException("Multiple results found for query: " + filters);
         } else if (results.isEmpty()) {

@@ -31,13 +31,15 @@ public final class SelectQueryFactory {
             String tableName,
             List<FilterCriterion<?, ?>> filterCriteria,
             Field orderByField,
-            boolean ascending
+            boolean ascending,
+            Integer limitAmount
     ) {
         String sql = String.join(" ",
                 SelectClause.build(tableName),
                 FromClause.build(tableName),
                 WhereClause.build(filterCriteria),
-                OrderByClause.build(tableName, orderByField, ascending)
+                OrderByClause.build(tableName, orderByField, ascending),
+                LimitClause.build(limitAmount)
         ).trim().replaceAll(" +", " ");
 
         return sql;

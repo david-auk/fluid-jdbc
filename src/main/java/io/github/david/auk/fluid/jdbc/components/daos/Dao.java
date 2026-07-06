@@ -9,7 +9,6 @@ import io.github.david.auk.fluid.jdbc.components.daos.querying.operator.SingleVa
 import io.github.david.auk.fluid.jdbc.components.daos.querying.operator.ValueOperator;
 import io.github.david.auk.fluid.jdbc.components.tables.Table;
 import io.github.david.auk.fluid.jdbc.components.tables.TableEntity;
-import io.github.david.auk.fluid.jdbc.components.tables.TableUtilsOld;
 import io.github.david.auk.fluid.jdbc.components.tables.utils.TableUtils;
 import io.github.david.auk.fluid.jdbc.components.tables.utils.query.sql.factories.InsertQueryFactory;
 import io.github.david.auk.fluid.jdbc.components.tables.utils.query.sql.factories.SelectQueryFactory;
@@ -21,6 +20,8 @@ import java.sql.*;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+
+import static io.github.david.auk.fluid.jdbc.components.tables.utils.TableUtils.getPrimaryKeyValue;
 
 public class Dao<TE extends TableEntity, PK> implements AutoCloseable {
 
@@ -92,7 +93,7 @@ public class Dao<TE extends TableEntity, PK> implements AutoCloseable {
         try (PreparedStatement ps = connection.prepareStatement(query)) {
             Object bindValue = isData;
             if (isData instanceof TableEntity isEntity) {
-                bindValue = TableUtilsOld.getPrimaryKeyValue(isEntity);
+                bindValue = getPrimaryKeyValue(isEntity);
             }
             ps.setObject(1, bindValue);
             try (ResultSet rs = ps.executeQuery()) {
@@ -197,7 +198,7 @@ public class Dao<TE extends TableEntity, PK> implements AutoCloseable {
             Object bindValue = primaryKey;
             if (primaryKey instanceof TableEntity foreignPrimaryKey) { // If primaryKey is a foreign object
                 // Get and use the foreign object's pk (this.pk = foreignObject.pk)
-                bindValue = TableUtilsOld.getPrimaryKeyValue(foreignPrimaryKey);
+                bindValue = getPrimaryKeyValue(foreignPrimaryKey);
             }
             preparedStatement.setObject(1, bindValue);
             ResultSet resultSet = preparedStatement.executeQuery();
@@ -224,11 +225,12 @@ public class Dao<TE extends TableEntity, PK> implements AutoCloseable {
     List<TE> get(
             List<FilterCriterion<?, ?>> filters,
             Field orderByField,
-            boolean ascending
+            boolean ascending,
+            Integer limitAmount
     ) {
         // 1) build the SQL
         try {
-            PreparedStatement selectStatement = connection.prepareStatement(SelectQueryFactory.build(table.getTableName(), filters, orderByField, ascending));
+            PreparedStatement selectStatement = connection.prepareStatement(SelectQueryFactory.build(table.getTableName(), filters, orderByField, ascending, limitAmount));
             SelectQueryFactory.prepareSelectStatement(selectStatement, filters);
 
             try (ResultSet rs = selectStatement.executeQuery()) {
