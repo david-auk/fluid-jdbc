@@ -157,6 +157,18 @@ public class QueryBuilder<TE extends TableEntity, PK> implements QueryInterface<
      * Execute the query and return matched entities.
      */
     @Override
+    public TE getFirst() {
+        limit(1);
+        return getUnique();
+    }
+
+    @Override
+    public TE getLast() {
+        ascending = !ascending;
+        return getFirst();
+    }
+
+    @Override
     public List<TE> get() {
         return dao.get(filters, orderByField, ascending, limit);
     }

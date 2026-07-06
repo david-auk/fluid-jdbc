@@ -38,6 +38,8 @@ public interface QueryInterface<T extends TableEntity, K> {
 
     // Actions
     List<T> get();
+    T getFirst();
+    T getLast();
     T getUnique();
     // TODO Add delete options here
 }
