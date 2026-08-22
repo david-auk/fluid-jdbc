@@ -32,14 +32,20 @@ public final class SelectQueryFactory {
             List<FilterCriterion<?, ?>> filterCriteria,
             Field orderByField,
             boolean ascending,
-            Integer limitAmount
+            Integer limitAmount,
+            Integer offsetAmount
     ) {
+        if (offsetAmount != null && limitAmount == null) {
+            throw new IllegalArgumentException("offset requires a limit for database portability");
+        }
+
         String sql = String.join(" ",
                 SelectClause.build(tableName),
                 FromClause.build(tableName),
                 WhereClause.build(filterCriteria),
                 OrderByClause.build(tableName, orderByField, ascending),
-                LimitClause.build(limitAmount)
+                LimitClause.build(limitAmount),
+                OffsetClause.build(offsetAmount)
         ).trim().replaceAll(" +", " ");
 
         return sql;

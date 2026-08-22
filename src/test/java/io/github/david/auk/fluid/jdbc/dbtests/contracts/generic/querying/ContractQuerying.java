@@ -234,6 +234,60 @@ public interface ContractQuerying extends ContractQueryingForeign, ContractQuery
         }
 
         @Test
+        default void querying_limitAndOffset_returnsExpectedPage() {
+                try (Dao<EntityQuerying, String> dao = dao(EntityQuerying.class, String.class)) {
+                        populateQuerying(dao);
+
+                        List<EntityQuerying> results = new QueryBuilder<>(dao)
+                                .orderBy(field("valueInt"))
+                                .asc()
+                                .limit(3)
+                                .offset(2)
+                                .get();
+
+                        assertEquals(3, results.size());
+                        assertEquals(List.of(1, 2, 3), results.stream().map(EntityQuerying::valueInt).toList());
+                }
+        }
+
+        @Test
+        default void querying_offsetZero_isAllowed() {
+                try (Dao<EntityQuerying, String> dao = dao(EntityQuerying.class, String.class)) {
+                        populateQuerying(dao);
+
+                        List<EntityQuerying> results = new QueryBuilder<>(dao)
+                                .orderBy(field("valueInt"))
+                                .asc()
+                                .limit(2)
+                                .offset(0)
+                                .get();
+
+                        assertEquals(List.of(-10, 0), results.stream().map(EntityQuerying::valueInt).toList());
+                }
+        }
+
+        @Test
+        default void querying_negativeOffset_throws() {
+                try (Dao<EntityQuerying, String> dao = dao(EntityQuerying.class, String.class)) {
+                        assertThrows(IllegalArgumentException.class, () -> new QueryBuilder<>(dao).offset(-1));
+                }
+        }
+
+        @Test
+        default void querying_offsetWithoutLimit_throwsWhenExecuted() {
+                try (Dao<EntityQuerying, String> dao = dao(EntityQuerying.class, String.class)) {
+                        populateQuerying(dao);
+
+                        QueryBuilder<EntityQuerying, String> query = new QueryBuilder<>(dao)
+                                .orderBy(field("valueInt"))
+                                .asc()
+                                .offset(2);
+
+                        assertThrows(IllegalArgumentException.class, query::get);
+                }
+        }
+
+        @Test
         default void querying_getFirst_orderBy_sortsByValueInt() {
                 try (Dao<EntityQuerying, String> dao = dao(EntityQuerying.class, String.class)) {
                         populateQuerying(dao);

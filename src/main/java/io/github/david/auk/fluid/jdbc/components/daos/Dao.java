@@ -226,11 +226,12 @@ public class Dao<TE extends TableEntity, PK> implements AutoCloseable {
             List<FilterCriterion<?, ?>> filters,
             Field orderByField,
             boolean ascending,
-            Integer limitAmount
+            Integer limitAmount,
+            Integer offsetAmount
     ) {
         // 1) build the SQL
         try {
-            PreparedStatement selectStatement = connection.prepareStatement(SelectQueryFactory.build(table.getTableName(), filters, orderByField, ascending, limitAmount));
+            PreparedStatement selectStatement = connection.prepareStatement(SelectQueryFactory.build(table.getTableName(), filters, orderByField, ascending, limitAmount, offsetAmount));
             SelectQueryFactory.prepareSelectStatement(selectStatement, filters);
 
             try (ResultSet rs = selectStatement.executeQuery()) {

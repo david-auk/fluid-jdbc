@@ -21,6 +21,8 @@ public class QueryBuilder<TE extends TableEntity, PK> implements QueryInterface<
     private Field orderByField;
     @Nullable
     private Integer limit;
+    @Nullable
+    private Integer offset;
     private boolean ascending = true;
 
     public QueryBuilder(Dao<TE, PK> dao) {
@@ -139,6 +141,19 @@ public class QueryBuilder<TE extends TableEntity, PK> implements QueryInterface<
         return this;
     }
 
+    /**
+     * Specify OFFSET number.
+     */
+    @Override
+    public QueryBuilder<TE, PK> offset(Integer offsetAmount) {
+        if (offsetAmount == null || offsetAmount < 0) {
+            throw new IllegalArgumentException("offsetAmount must be 0 or above");
+        }
+
+        this.offset = offsetAmount;
+        return this;
+    }
+
     /** Subsequent .get() will sort ascending. */
     @Override
     public QueryBuilder<TE, PK> asc() {
@@ -170,12 +185,12 @@ public class QueryBuilder<TE extends TableEntity, PK> implements QueryInterface<
 
     @Override
     public List<TE> get() {
-        return dao.get(filters, orderByField, ascending, limit);
+        return dao.get(filters, orderByField, ascending, limit, offset);
     }
 
     @Override
     public TE getUnique() {
-        List<TE> results = dao.get(filters, orderByField, ascending, limit);
+        List<TE> results = dao.get(filters, orderByField, ascending, limit, offset);
         if (results.size() > 1) {
             throw new IllegalStateException("Multiple results found for query: " + filters);
         } else if (results.isEmpty()) {
